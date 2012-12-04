@@ -46,6 +46,19 @@ AC_SUBST([CSCGI_LDFLAGS])
 CSCGI_LIBS='-lcscgi'
 AC_SUBST([CSCGI_LIBS])
 
+AC_ARG_WITH([uci-include-path],
+  [AS_HELP_STRING([--with-uci-include-path],
+    [location of the uci library headers])],
+  [LIBUCI_CFLAGS="-I$withval"])
+AC_SUBST([LIBUCI_CFLAGS])
+
+AC_ARG_WITH([uci-lib-path],
+  [AS_HELP_STRING([--with-uci-lib-path], [location of the uci library])], [LIBUCI_LDFLAGS="-L$withval"])
+AC_SUBST([LIBUCI_LDFLAGS])
+
+LIBUCI_LIBS='-luci'
+AC_SUBST([LIBUCI_LIBS])
+
 AC_ARG_ENABLE(dummy_mode, [AS_HELP_STRING([--enable-dummy-mode], [enable dummy mode])], AC_DEFINE(DUMMY_MODE),)
 
 # checks for header files

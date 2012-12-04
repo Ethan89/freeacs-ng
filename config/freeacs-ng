@@ -1,0 +1,7 @@
+#
+# freeacs-ng uci configuration
+#
+
+config scgi
+	option address '127.0.0.1'
+	option port '9000'

@@ -23,6 +23,8 @@
 
 #include "freeacs-ng.h"
 
+#include "config.h"
+
 static struct event_base *base;
 static struct evconnlistener *listener;
 
@@ -123,6 +125,8 @@ void release_connection(struct connection_t *connection, bool error)
 	/* free allocated event loop resources */
 	evconnlistener_free(listener);
 	event_base_free(base);
+
+	config_exit();
 #endif /* DUMMY_MODE */
 }
 
@@ -373,23 +377,18 @@ static void accept_error_cb(struct evconnlistener *listener, void *context)
 
 int main(int argc, char **argv)
 {
+	config_load();
+
 	base = event_base_new();
 	if (!base) {
 		fprintf(stderr, "Couldn't create event base.\n");
 		return EXIT_FAILURE;
 	}
 
-	/* configure to listen on *:9000 */
-	struct sockaddr_in host;
-	memset(&host, 0, sizeof(host));
-	host.sin_family      = AF_INET;
-	host.sin_addr.s_addr = htonl(0);
-	host.sin_port        = htons(9000);
-
 	/* start listening for incomming connections */
 	listener = evconnlistener_new_bind(base, accept_conn_cb, NULL,
 			LEV_OPT_CLOSE_ON_FREE|LEV_OPT_REUSEABLE,
-			-1, (struct sockaddr*)&host, sizeof(host));
+			-1, (struct sockaddr*)&scgi.host, sizeof(scgi.host));
 
 	if (listener == NULL) {
 		fprintf(stderr, "Couldn't create listener.\n");
