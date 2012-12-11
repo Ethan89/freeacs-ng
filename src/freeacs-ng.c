@@ -24,6 +24,7 @@
 #include "freeacs-ng.h"
 
 #include "config.h"
+#include "http.h"
 
 static struct event_base *base;
 static struct evconnlistener *listener;
@@ -187,19 +188,8 @@ static void finish_head(struct scgi_parser *parser)
 		evbuffer_peek(connection->head, next.pos - here.pos, &here, &data, 1);
 		data.iov_len = next.pos - here.pos;
 
-		/* print out the HTTP header */
-		fprintf(stderr, "'%.*s': '%.*s'.\n",
-				(int)name.iov_len, (const char*)name.iov_base,
-				(int)data.iov_len, (const char*)data.iov_base);
-
-		// TODO
-		if (!strncmp ("CONTENT_LENGTH", (const char*)name.iov_base, (int)name.iov_len)) {
-			connection->http.content_length = atoi((const char*)data.iov_base);
-		} else if (!strncmp ("REQUEST_METHOD", (const char*)name.iov_base, (int)name.iov_len)) {
-			if (!strncmp ("POST", (const char*)data.iov_base, (int)data.iov_len)) {
-				connection->http.request_method = HTTP_POST;
-			}
-		}
+		http_parse_param((const char *)name.iov_base, (const char *)data.iov_base,
+				 &connection->http);
 
 		/* locate the next header */
 		evbuffer_ptr_set(connection->head, &next, 1, EVBUFFER_PTR_ADD);

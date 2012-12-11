@@ -10,20 +10,7 @@
 #ifndef _FREEACS_NG_H__
 #define _FREEACS_NG_H__
 
-#include <stdint.h>
-#include <stdlib.h>
-
-/* supported HTTP methods */
-#define HTTP_UNKNOWN	0x1
-#define HTTP_GET	0x2
-#define HTTP_POST	0x4
-
-/* HTTP related data */
-struct http_t
-{
-	size_t content_length;
-	uintptr_t request_method;
-};
+#include "http.h"
 
 /* bookkeeping for each connection */
 struct connection_t

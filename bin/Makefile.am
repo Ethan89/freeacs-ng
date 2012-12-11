@@ -4,7 +4,9 @@ freeacs_ng_SOURCES =		\
 	../src/freeacs-ng.h	\
 	../src/freeacs-ng.c	\
 	../src/config.h		\
-	../src/config.c
+	../src/config.c		\
+	../src/http.h		\
+	../src/http.c
 
 freeacs_ng_CFLAGS =		\
 	$(AM_CFLAGS)		\
