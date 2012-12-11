@@ -1,0 +1,6 @@
+= freeacs-ng
+
+== 2012-12-02
+
+* GNU build system
+* cscgi and netstring integreation
