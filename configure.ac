@@ -7,6 +7,19 @@ AC_PROG_CC
 AM_PROG_CC_C_O
 
 # checks for libraries
+AC_ARG_WITH([libfreecwmp-include-path],
+  [AS_HELP_STRING([--with-libfreecwmp-include-path],
+    [location of the libfreecwmp library headers])],
+  [LIBFREECWMP_CFLAGS="-I$withval"])
+AC_SUBST([LIBFREECWMP_CFLAGS])
+
+AC_ARG_WITH([libfreecwmp-lib-path],
+  [AS_HELP_STRING([--with-libfreecwmp-lib-path], [location of the libfreecwmp library])], [LIBFREECWMP_LDFLAGS="-L$withval"])
+AC_SUBST([LIBFREECWMP_LDFLAGS])
+
+LIBFREECWMP_LIBS='-lfreecwmp'
+AC_SUBST([LIBFREECWMP_LIBS])
+
 AC_ARG_WITH([event-include-path],
   [AS_HELP_STRING([--with-event-include-path],
     [location of the event library headers])],
@@ -58,6 +71,8 @@ AC_SUBST([LIBUCI_LDFLAGS])
 
 LIBUCI_LIBS='-luci'
 AC_SUBST([LIBUCI_LIBS])
+
+PKG_CHECK_MODULES(LIBXML, libxml-2.0)
 
 AC_ARG_ENABLE(dummy_mode, [AS_HELP_STRING([--enable-dummy-mode], [enable dummy mode])], AC_DEFINE(DUMMY_MODE),)
 

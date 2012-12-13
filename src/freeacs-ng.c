@@ -19,12 +19,18 @@
 #include <event2/bufferevent.h>
 #include <event2/listener.h>
 
+#include <libxml/parser.h>
+#include <libxml/tree.h>
+#include <libxml/xpath.h>
+#include <libxml/xpathInternals.h>
+
 #include <scgi.h>
 
 #include "freeacs-ng.h"
 
 #include "config.h"
 #include "http.h"
+#include "xml.h"
 
 static struct event_base *base;
 static struct evconnlistener *listener;
@@ -90,6 +96,9 @@ static struct connection_t *prepare_connection()
 	/* http specific data */
 	connection->http.content_length = 0;
 	connection->http.request_method = HTTP_UNKNOWN;
+
+	/* xml specific data */
+	connection->doc_in = NULL;
 
 	fprintf(stderr, "Connection object ready.\n");
 
@@ -208,12 +217,30 @@ static size_t accept_body(struct scgi_parser *parser,
 	return size;
 }
 
-/* null-terminate the body data */
 static void finish_body(struct scgi_parser *parser)
 {
+	/* null-terminate the body data */
 	struct connection_t *connection = parser->object;
 	evbuffer_add(connection->body, "\0", 1);
 
+	/* get the body */
+	struct evbuffer_ptr here;
+	struct evbuffer_ptr next;
+	struct evbuffer_iovec msg;
+
+	memset(&here, 0, sizeof(here));
+	evbuffer_ptr_set(connection->body, &here, 0, EVBUFFER_PTR_SET);
+	next = evbuffer_search(connection->body, "\0", 1, &here);
+	if (next.pos < 0) {
+		connection->msg_in.data = NULL;
+		connection->msg_in.len = 0;
+	} else {
+		evbuffer_peek(connection->body, next.pos - here.pos, &here, &msg, 1);
+		connection->msg_in.data = msg.iov_base;
+		connection->msg_in.len = next.pos - here.pos;
+	}
+
+	/* finish by generating response */
 	send_response(parser);
 }
 
@@ -226,16 +253,44 @@ static void send_response(struct scgi_parser *parser)
 	/* start responding */
 	struct evbuffer *output = bufferevent_get_output(connection->stream);
 
-	/* TODO: dynamic response message goes here */
+	/* FIXME: for now we are ignoring POST method without body */
+	if (connection->http.request_method == HTTP_POST
+	    && connection->http.content_length == 0)
+	{
+		evbuffer_add(output, HTTP_HEADER_204 NEWLINE,
+			     sizeof(HTTP_HEADER_204 NEWLINE) - 1);
+		return;
+	}
 
-	char response[] =
-		"Status: 200 OK" "\r\n"
-		"Content-Type: text/plain" "\r\n"
-		"\r\n"
-		"hello world\n"
-		;
+	/* FIXME: for now we are just ignoring GET method */
+	if (connection->http.request_method == HTTP_GET) {
+		evbuffer_add(output, HTTP_HEADER_204 NEWLINE,
+			     sizeof(HTTP_HEADER_204 NEWLINE) - 1);
+		return;
+	}
 
-	evbuffer_add(output, response, sizeof(response) - 1);
+	lxml2_parser_init();
+
+	/* FIXME: for now we are just ignoring case when reading XML failed */
+	if (xml_read_message(&connection->doc_in, &connection->msg_in)) {
+		evbuffer_add(output, HTTP_HEADER_204 NEWLINE,
+			     sizeof(HTTP_HEADER_204 NEWLINE) - 1);
+		goto clean;
+	}
+
+	/* FIXME: at the moment we are only sending inform response */
+	evbuffer_add(output, HTTP_HEADER_200_CONTENT_XML,
+		     sizeof(HTTP_HEADER_200_CONTENT_XML) - 1);
+	evbuffer_add(output, XML_CWMP_GENERIC_HEAD,
+			sizeof(XML_CWMP_GENERIC_HEAD) - 1);
+	evbuffer_add(output, XML_CWMP_INFORM_RESPONSE,
+			sizeof(XML_CWMP_INFORM_RESPONSE) - 1);
+	evbuffer_add(output, XML_CWMP_GENERIC_TAIL,
+			sizeof(XML_CWMP_GENERIC_TAIL) - 1);
+
+clean:
+	if (connection->doc_in) lxml2_doc_free(connection->doc_in);
+	lxml2_parser_cleanup();
 }
 
 static void read_cb(struct bufferevent *stream, void *context)

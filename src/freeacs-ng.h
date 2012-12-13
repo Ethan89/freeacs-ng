@@ -10,7 +10,10 @@
 #ifndef _FREEACS_NG_H__
 #define _FREEACS_NG_H__
 
+#include <scgi.h>
+
 #include "http.h"
+#include "xml.h"
 
 /* bookkeeping for each connection */
 struct connection_t
@@ -27,6 +30,10 @@ struct connection_t
 
 	/* HTTP related data */
 	struct http_t http;
+
+	/* XML related data */
+	cwmp_str_t msg_in;
+	lxml2_doc *doc_in;
 };
 
 /* SCGI callback functions */

@@ -13,10 +13,26 @@
 #include <stdint.h>
 #include <stdlib.h>
 
+#include "xml.h"
+
 /* supported HTTP methods */
 #define HTTP_UNKNOWN    0x1
 #define HTTP_GET        0x2
 #define HTTP_POST       0x4
+
+#define HTTP_HEADER_200 \
+	"Status: 200 OK" NEWLINE
+
+#define HTTP_HEADER_204 \
+	"Status: 204 No Content" NEWLINE
+
+#define HTTP_HEADER_CONTENT_XML \
+	"Content-Type: text/xml" NEWLINE
+
+#define HTTP_HEADER_200_CONTENT_XML \
+	HTTP_HEADER_200 \
+	HTTP_HEADER_CONTENT_XML \
+	NEWLINE
 
 struct http_t
 {
