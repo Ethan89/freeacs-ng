@@ -35,9 +35,15 @@ typedef xmlNode lxml2_node;
 #define lxml2_xpath_eval_expr(a, b) (xmlXPathEvalExpression(a, b));
 #define lxml2_xpath_free_ctx(a) (xmlXPathFreeContext(a));
 #define lxml2_xpath_free_obj(a) (xmlXPathFreeObject(a));
+#define lxml2_xpath_register_ns(a, b, c) (xmlXPathRegisterNs(a, b, c));
 #define lxml2_mem_read(a, b, c, d, e) (xmlReadMemory(a, b, c, d, e));
 #define lxml2_node_get_content(a) (xmlNodeGetContent(a));
 
+#define XML_CWMP_TYPE_NONE	0x0
+#define XML_CWMP_TYPE_UNKNOWN	0x1
+#define XML_CWMP_TYPE_INFORM	0x2
+
 int xml_read_message(lxml2_doc **, const cwmp_str_t *);
+int xml_message_tag(lxml2_doc *, uintptr_t *);
 
 #endif /* _FREEACS_NG_XML_H__ */

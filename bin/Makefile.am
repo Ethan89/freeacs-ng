@@ -3,6 +3,8 @@ bin_PROGRAMS = freeacs-ng
 freeacs_ng_SOURCES =		\
 	../src/freeacs-ng.h	\
 	../src/freeacs-ng.c	\
+	../src/amqp.h		\
+	../src/amqp.c		\
 	../src/config.h		\
 	../src/config.c		\
 	../src/http.h		\
@@ -17,7 +19,8 @@ freeacs_ng_CFLAGS =		\
 	$(NETSTRING_CFLAGS)	\
 	$(CSCGI_CFLAGS)		\
 	$(LIBUCI_CFLAGS)	\
-	$(LIBXML_CFLAGS)
+	$(LIBXML_CFLAGS)	\
+	$(LIBRABBITMQ_CFLAGS)
 
 freeacs_ng_LDFLAGS =		\
 	$(AM_LDFLAGS)		\
@@ -34,4 +37,5 @@ freeacs_ng_LDADD =		\
 	$(NETSTRING_LIBS)	\
 	$(CSCGI_LIBS)		\
 	$(LIBUCI_LIBS)		\
-	$(LIBXML_LIBS)
+	$(LIBXML_LIBS)		\
+	$(LIBRABBITMQ_LIBS)

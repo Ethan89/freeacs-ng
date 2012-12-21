@@ -33,6 +33,7 @@ struct connection_t
 
 	/* XML related data */
 	cwmp_str_t msg_in;
+	uintptr_t msg_tag;
 	lxml2_doc *doc_in;
 };
 

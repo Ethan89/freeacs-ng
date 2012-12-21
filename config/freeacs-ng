@@ -5,3 +5,16 @@
 config scgi
 	option address '127.0.0.1'
 	option port '9000'
+
+config amqp
+	option host '127.0.0.1'
+	option port '5672'
+	option user 'guest'
+	option pass 'guest'
+	option virtual_host '/'
+
+config amqp_exchange
+	option broadcast 'freeacs-ng broadcast fanout'
+
+config amqp_queue
+	option broadcast 'freeacs-ng broadcast main'

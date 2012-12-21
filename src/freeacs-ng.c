@@ -28,6 +28,7 @@
 
 #include "freeacs-ng.h"
 
+#include "amqp.h"
 #include "config.h"
 #include "http.h"
 #include "xml.h"
@@ -247,46 +248,74 @@ static void finish_body(struct scgi_parser *parser)
 static void send_response(struct scgi_parser *parser)
 {
 	struct connection_t *connection = parser->object;
+	int rc;
 
 	fprintf(stderr, "Starting response.\n");
 
-	/* start responding */
-	struct evbuffer *output = bufferevent_get_output(connection->stream);
-
-	/* FIXME: for now we are ignoring POST method without body */
-	if (connection->http.request_method == HTTP_POST
-	    && connection->http.content_length == 0)
-	{
-		evbuffer_add(output, HTTP_HEADER_204 NEWLINE,
-			     sizeof(HTTP_HEADER_204 NEWLINE) - 1);
-		return;
+	rc = amqp_notify(&connection->msg_in);
+	if (rc != 0) {
+		fprintf(stderr, "failed to send AMQP notification");
 	}
+
+	struct evbuffer *output = bufferevent_get_output(connection->stream);
 
 	/* FIXME: for now we are just ignoring GET method */
 	if (connection->http.request_method == HTTP_GET) {
-		evbuffer_add(output, HTTP_HEADER_204 NEWLINE,
-			     sizeof(HTTP_HEADER_204 NEWLINE) - 1);
+		evbuffer_add(output, ARRAY_AND_SIZE(HTTP_HEADER_204 NEWLINE) - 1);
 		return;
+	}
+
+	/* FIXME: for now we are only sending reboot requests */
+	if (connection->http.request_method == HTTP_POST
+	    && connection->http.content_length == 0)
+	{
+		cwmp_str_t action = {
+			.data	= NULL,
+			.len	= 0
+		};
+
+		amqp_fetch_pending(&action);
+		if (rc != 0) {
+			fprintf(stderr, "failed to get AMQP action");
+		}
+
+		if (action.len) {
+			evbuffer_add(output, ARRAY_AND_SIZE(HTTP_HEADER_200_CONTENT_XML) - 1);
+			evbuffer_add(output, ARRAY_AND_SIZE(XML_SOAP_ENVELOPE_HEAD) - 1);
+			evbuffer_add(output, ARRAY_AND_SIZE(XML_CWMP_HEAD) - 1);
+			evbuffer_add(output, ARRAY_AND_SIZE(XML_CWMP_BODY_HEAD) - 1);
+			evbuffer_add(output, ARRAY_AND_SIZE(XML_CWMP_CMD_REBOOT) - 1);
+			evbuffer_add(output, ARRAY_AND_SIZE(XML_CWMP_GENERIC_TAIL) - 1);
+		} else {
+			evbuffer_add(output, ARRAY_AND_SIZE(HTTP_HEADER_204 NEWLINE) - 1);
+		}
+
+		free(action.data);
+		goto clean;
 	}
 
 	lxml2_parser_init();
 
 	/* FIXME: for now we are just ignoring case when reading XML failed */
 	if (xml_read_message(&connection->doc_in, &connection->msg_in)) {
-		evbuffer_add(output, HTTP_HEADER_204 NEWLINE,
-			     sizeof(HTTP_HEADER_204 NEWLINE) - 1);
+		evbuffer_add(output, ARRAY_AND_SIZE(HTTP_HEADER_204 NEWLINE) - 1);
 		goto clean;
 	}
 
-	/* FIXME: at the moment we are only sending inform response */
-	evbuffer_add(output, HTTP_HEADER_200_CONTENT_XML,
-		     sizeof(HTTP_HEADER_200_CONTENT_XML) - 1);
-	evbuffer_add(output, XML_CWMP_GENERIC_HEAD,
-			sizeof(XML_CWMP_GENERIC_HEAD) - 1);
-	evbuffer_add(output, XML_CWMP_INFORM_RESPONSE,
-			sizeof(XML_CWMP_INFORM_RESPONSE) - 1);
-	evbuffer_add(output, XML_CWMP_GENERIC_TAIL,
-			sizeof(XML_CWMP_GENERIC_TAIL) - 1);
+	if (xml_message_tag(connection->doc_in, &connection->msg_tag)) {
+		evbuffer_add(output, ARRAY_AND_SIZE(HTTP_HEADER_204 NEWLINE) - 1);
+		goto clean;
+	}
+
+	if (connection->msg_tag & XML_CWMP_TYPE_INFORM) {
+		evbuffer_add(output, ARRAY_AND_SIZE(HTTP_HEADER_200_CONTENT_XML) - 1);
+		evbuffer_add(output, ARRAY_AND_SIZE(XML_CWMP_GENERIC_HEAD) - 1);
+		evbuffer_add(output, ARRAY_AND_SIZE(XML_CWMP_INFORM_RESPONSE) -1);
+		evbuffer_add(output, ARRAY_AND_SIZE(XML_CWMP_GENERIC_TAIL) - 1);
+		goto clean;
+	}
+
+	evbuffer_add(output, ARRAY_AND_SIZE(HTTP_HEADER_204 NEWLINE) - 1);
 
 clean:
 	if (connection->doc_in) lxml2_doc_free(connection->doc_in);
@@ -445,6 +474,14 @@ int main(int argc, char **argv)
 
 	/* process event notifications forever */
 	event_base_dispatch(base);
+
+	/* free configuration allocations */
+	free(amqp.host);
+	free(amqp.user);
+	free(amqp.pass);
+	free(amqp.virtual_host);
+	free(amqp_exchange.broadcast.data);
+	free(amqp_queue.broadcast.data);
 
 	return EXIT_SUCCESS;
 }

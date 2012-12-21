@@ -12,6 +12,8 @@
 
 #include <arpa/inet.h>
 
+#include <libfreecwmp.h>
+
 void config_exit(void);
 void config_load(void);
 
@@ -19,6 +21,25 @@ struct scgi_t {
 	struct sockaddr_in host;
 };
 
+struct amqp_t {
+	char *host;
+	int port;
+	char *user;
+	char *pass;
+	char *virtual_host;
+};
+
+struct amqp_exchange_t {
+	cwmp_str_t broadcast;
+};
+
+struct amqp_queue_t {
+	cwmp_str_t broadcast;
+};
+
 extern struct scgi_t scgi;
+extern struct amqp_t amqp;
+extern struct amqp_exchange_t amqp_exchange;
+extern struct amqp_queue_t amqp_queue;
 
 #endif /* _FREEACS_NG_CONFIG_H__ */
