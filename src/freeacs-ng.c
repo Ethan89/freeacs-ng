@@ -276,7 +276,7 @@ static void send_response(struct scgi_parser *parser)
 			.len	= 0
 		};
 
-		amqp_fetch_pending(&action);
+		rc = amqp_fetch_pending(&action);
 		if (rc != 0) {
 			fprintf(stderr, "failed to get AMQP action");
 		}
