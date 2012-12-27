@@ -91,6 +91,8 @@ static struct connection_t *prepare_connection()
 	/* make sure SCGI callbacks can access the connection object */
 	connection->parser.object = connection;
 
+	connection->request_status = REQUEST_RECEIVED;
+
 	/* will be initialized later */
 	connection->stream = 0;
 
@@ -320,6 +322,7 @@ static void send_response(struct scgi_parser *parser)
 clean:
 	if (connection->doc_in) lxml2_doc_free(connection->doc_in);
 	lxml2_parser_cleanup();
+	connection->request_status = REQUEST_FINISHED;
 }
 
 static void read_cb(struct bufferevent *stream, void *context)
@@ -376,7 +379,8 @@ static void write_cb(struct bufferevent *stream, void *context)
 	struct evbuffer *output = bufferevent_get_output(stream);
 	struct evbuffer *input  = bufferevent_get_input(stream);
 
-	if (connection->parser.body_size == connection->http.content_length
+	if (connection->request_status == REQUEST_FINISHED
+	    && connection->parser.body_size == connection->http.content_length
 	    && evbuffer_get_length(output) == 0
 	    && evbuffer_get_length(input) == 0)
 	{

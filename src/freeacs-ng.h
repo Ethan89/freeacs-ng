@@ -15,6 +15,9 @@
 #include "http.h"
 #include "xml.h"
 
+#define REQUEST_RECEIVED	0x1
+#define REQUEST_FINISHED	0x2
+
 /* bookkeeping for each connection */
 struct connection_t
 {
@@ -27,6 +30,9 @@ struct connection_t
 	/* request buffers */
 	struct evbuffer *head;
 	struct evbuffer *body;
+
+	/* request status */
+	uintptr_t request_status;
 
 	/* HTTP related data */
 	struct http_t http;
