@@ -256,7 +256,7 @@ static void send_response(struct scgi_parser *parser)
 
 	rc = amqp_notify(&connection->msg_in);
 	if (rc != 0) {
-		fprintf(stderr, "failed to send AMQP notification");
+		fprintf(stderr, "failed to send AMQP notification.\n");
 	}
 
 	struct evbuffer *output = bufferevent_get_output(connection->stream);
@@ -278,7 +278,7 @@ static void send_response(struct scgi_parser *parser)
 
 		rc = amqp_fetch_pending(&action);
 		if (rc != 0) {
-			fprintf(stderr, "failed to get AMQP action");
+			fprintf(stderr, "failed to fetch AMQP action.\n");
 		}
 
 		if (action.len) {
