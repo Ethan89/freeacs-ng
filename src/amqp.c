@@ -85,6 +85,15 @@ int amqp_notify(const cwmp_str_t *msg)
 		return -1;
 	}
 
+	amqp_queue_bind(conn, 1, b_queue, b_exchange, amqp_empty_bytes, amqp_empty_table);
+	reply = amqp_get_rpc_reply(conn);
+	if (reply.reply_type != AMQP_RESPONSE_NORMAL) {
+		amqp_channel_close(conn, 1, AMQP_REPLY_SUCCESS);
+		amqp_connection_close(conn, AMQP_REPLY_SUCCESS);
+		amqp_destroy_connection(conn);
+		return -1;
+	}
+
 	rc = amqp_basic_publish(conn, 1, b_exchange, amqp_empty_bytes, 0, 0, NULL, b_msg);
 	if (rc < 0) {
 		amqp_channel_close(conn, 1, AMQP_REPLY_SUCCESS);
