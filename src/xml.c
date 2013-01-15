@@ -32,7 +32,7 @@ int xml_message_tag(lxml2_doc *doc, uintptr_t *tag)
 	u_char *xpath_expr;
 	int rc;
 
-	*tag = XML_CWMP_TYPE_NONE;
+	*tag = XML_CWMP_NONE;
 
 	xpath_ctx = lxml2_xpath_new_ctx(doc);
 	if(xpath_ctx == NULL) {
@@ -57,6 +57,25 @@ int xml_message_tag(lxml2_doc *doc, uintptr_t *tag)
 		return -1;
 	}
 
+	rc = lxml2_xpath_register_ns(xpath_ctx,
+				     "cwmp_1_1",
+				     CWMP_VERSION_1_1);
+	if (rc == -1) {
+		lxml2_xpath_free_ctx(xpath_ctx);
+		fprintf(stderr, "could not register namespace\n");
+		return -1;
+	}
+
+	rc = lxml2_xpath_register_ns(xpath_ctx,
+				     "cwmp_1_2",
+				     CWMP_VERSION_1_2);
+	if (rc == -1) {
+		lxml2_xpath_free_ctx(xpath_ctx);
+		fprintf(stderr, "could not register namespace\n");
+		return -1;
+	}
+
+	/* CWMP-1-0 inform message */
 	xpath_expr = "/soap_env:Envelope/soap_env:Body/cwmp_1_0:Inform";
 	xpath_obj = lxml2_xpath_eval_expr(xpath_expr, xpath_ctx);
 	if (xpath_obj == NULL) {
@@ -64,17 +83,49 @@ int xml_message_tag(lxml2_doc *doc, uintptr_t *tag)
 		return -1;
 	}
 
-	int i;
-	for(i = 0; i < ((xpath_obj->nodesetval) ? xpath_obj->nodesetval->nodeNr : 0); ++i) {
+	for(int i = 0; i < ((xpath_obj->nodesetval) ? xpath_obj->nodesetval->nodeNr : 0); ++i) {
 		if(xpath_obj->nodesetval->nodeTab[i]->type == XML_ELEMENT_NODE) {
+			*tag |= XML_CWMP_VERSION_1_0;
 			*tag |= XML_CWMP_TYPE_INFORM;
 		}
 	}
-
 	xmlXPathFreeObject(xpath_obj);
+
+	/* CWMP-1-1 inform message */
+	xpath_expr = "/soap_env:Envelope/soap_env:Body/cwmp_1_1:Inform";
+	xpath_obj = lxml2_xpath_eval_expr(xpath_expr, xpath_ctx);
+	if (xpath_obj == NULL) {
+		lxml2_xpath_free_ctx(xpath_ctx);
+		return -1;
+	}
+
+	for(int i = 0; i < ((xpath_obj->nodesetval) ? xpath_obj->nodesetval->nodeNr : 0); ++i) {
+		if(xpath_obj->nodesetval->nodeTab[i]->type == XML_ELEMENT_NODE) {
+			*tag |= XML_CWMP_VERSION_1_1;
+			*tag |= XML_CWMP_TYPE_INFORM;
+		}
+	}
+	xmlXPathFreeObject(xpath_obj);
+
+	/* CWMP-1-2 inform message */
+	xpath_expr = "/soap_env:Envelope/soap_env:Body/cwmp_1_2:Inform";
+	xpath_obj = lxml2_xpath_eval_expr(xpath_expr, xpath_ctx);
+	if (xpath_obj == NULL) {
+		lxml2_xpath_free_ctx(xpath_ctx);
+		return -1;
+	}
+
+	for(int i = 0; i < ((xpath_obj->nodesetval) ? xpath_obj->nodesetval->nodeNr : 0); ++i) {
+		if(xpath_obj->nodesetval->nodeTab[i]->type == XML_ELEMENT_NODE) {
+			*tag |= XML_CWMP_VERSION_1_2;
+			*tag |= XML_CWMP_TYPE_INFORM;
+		}
+	}
+	xmlXPathFreeObject(xpath_obj);
+
 	xmlXPathFreeContext(xpath_ctx);
 
-	if (*tag == XML_CWMP_TYPE_NONE) *tag = XML_CWMP_TYPE_UNKNOWN;
+	if (*tag == XML_CWMP_NONE) *tag = XML_CWMP_TYPE_UNKNOWN;
 
 	return 0;
 }

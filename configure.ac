@@ -4,6 +4,7 @@ AC_CONFIG_SRCDIR([src/freeacs-ng.c])
 
 # checks for programs
 AC_PROG_CC
+AC_PROG_CC_STDC
 AM_PROG_CC_C_O
 
 # checks for libraries
