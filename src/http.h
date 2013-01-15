@@ -40,6 +40,6 @@ struct http_t
         uintptr_t request_method;
 };
 
-__inline void http_parse_param(const char *, const char *, struct http_t *);
+void http_parse_param(const char *, const char *, struct http_t *);
 
 #endif /* _FREEACS_NG_HTTP_H__ */
