@@ -186,6 +186,8 @@ static int config_init_amqp_exchange()
 	int counter_section = 0;
 	amqp_exchange.broadcast.data = NULL;
 	amqp_exchange.broadcast.len = 0;
+	amqp_exchange.provisioning.data = NULL;
+	amqp_exchange.provisioning.len = 0;
 
 	uci_foreach_element(&uci_freeacs_ng->sections, e1) {
 		s = uci_to_section(e1);
@@ -221,10 +223,31 @@ static int config_init_amqp_exchange()
 				return -1;
 			}
 		}
+
+		if (!strcmp((uci_to_option(e1))->e.name, "provisioning")) {
+			fprintf(stderr, "freeacs-ng.@amqp_exchange[0].provisioning=%s\n", uci_to_option(e1)->v.string);
+
+			amqp_exchange.provisioning.len = strlen(uci_to_option(e1)->v.string);
+
+			/* this *should* not happen but just in case */
+			if (amqp_exchange.provisioning.data) free(amqp_exchange.provisioning.data);
+
+			amqp_exchange.provisioning.data = strdup(uci_to_option(e1)->v.string);
+
+			if (!amqp_exchange.provisioning.data) {
+				fprintf(stderr, "can't allocate enough memory...\n");
+				return -1;
+			}
+		}
 	}
 
 	if (!amqp_exchange.broadcast.data) {
 		fprintf(stderr, "uci option broadcast must be defined in amqp_exchange section...\n");
+		return -1;
+	}
+
+	if (!amqp_exchange.provisioning.data) {
+		fprintf(stderr, "uci option provisioning must be defined in amqp_exchange section...\n");
 		return -1;
 	}
 
@@ -238,6 +261,8 @@ static int config_init_amqp_queue()
 	int counter_section = 0;
 	amqp_queue.broadcast.data = NULL;
 	amqp_queue.broadcast.len = 0;
+	amqp_queue.provisioning.data = NULL;
+	amqp_queue.provisioning.len = 0;
 
 	uci_foreach_element(&uci_freeacs_ng->sections, e1) {
 		s = uci_to_section(e1);
@@ -273,10 +298,31 @@ static int config_init_amqp_queue()
 				return -1;
 			}
 		}
+
+		if (!strcmp((uci_to_option(e1))->e.name, "provisioning")) {
+			fprintf(stderr, "freeacs-ng.@amqp_queue[0].provisioning=%s\n", uci_to_option(e1)->v.string);
+
+			amqp_queue.provisioning.len = strlen(uci_to_option(e1)->v.string);
+
+			/* this *should* not happen but just in case */
+			if (amqp_queue.provisioning.data) free(amqp_queue.provisioning.data);
+
+			amqp_queue.provisioning.data = strdup(uci_to_option(e1)->v.string);
+
+			if (!amqp_queue.provisioning.data) {
+				fprintf(stderr, "can't allocate enough memory...\n");
+				return -1;
+			}
+		}
 	}
 
 	if (!amqp_queue.broadcast.data) {
 		fprintf(stderr, "uci option broadcast must be defined in amqp_queue section...\n");
+		return -1;
+	}
+
+	if (!amqp_queue.provisioning.data) {
+		fprintf(stderr, "uci option provisioning must be defined in amqp_queue section...\n");
 		return -1;
 	}
 

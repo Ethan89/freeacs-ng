@@ -31,10 +31,12 @@ struct amqp_t {
 
 struct amqp_exchange_t {
 	cwmp_str_t broadcast;
+	cwmp_str_t provisioning;
 };
 
 struct amqp_queue_t {
 	cwmp_str_t broadcast;
+	cwmp_str_t provisioning;
 };
 
 extern struct scgi_t scgi;

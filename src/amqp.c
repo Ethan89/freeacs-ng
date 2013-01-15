@@ -142,22 +142,17 @@ int amqp_fetch_pending(cwmp_str_t *msg)
 		return -1;
 	}
 
-	amqp_bytes_t b_exchange = {
-		.bytes	= amqp_exchange.broadcast.data,
-		.len	= amqp_exchange.broadcast.len
+	amqp_bytes_t provisioning_exchange = {
+		.bytes	= amqp_exchange.provisioning.data,
+		.len	= amqp_exchange.provisioning.len
 	};
 
-	amqp_bytes_t b_queue = {
-		.bytes	= amqp_queue.broadcast.data,
-		.len	= amqp_queue.broadcast.len
+	amqp_bytes_t provisioning_queue = {
+		.bytes	= amqp_queue.provisioning.data,
+		.len	= amqp_queue.provisioning.len
 	};
 
-	amqp_bytes_t b_msg = {
-		.bytes	= msg->data,
-		.len	= msg->len
-	};
-
-	amqp_exchange_declare(conn, 1, b_exchange, amqp_cstring_bytes("fanout"), 0, 1, amqp_empty_table);
+	amqp_exchange_declare(conn, 1, provisioning_exchange, amqp_cstring_bytes("fanout"), 0, 1, amqp_empty_table);
 	reply = amqp_get_rpc_reply(conn);
 	if (reply.reply_type != AMQP_RESPONSE_NORMAL) {
 		amqp_channel_close(conn, 1, AMQP_REPLY_SUCCESS);
@@ -166,7 +161,7 @@ int amqp_fetch_pending(cwmp_str_t *msg)
 		return -1;
 	}
 
-	amqp_queue_declare(conn, 1, amqp_cstring_bytes("pending"), 0, 1, 0, 0, amqp_empty_table);
+	amqp_queue_declare(conn, 1, provisioning_queue, 0, 1, 0, 0, amqp_empty_table);
 	reply = amqp_get_rpc_reply(conn);
 	if (reply.reply_type != AMQP_RESPONSE_NORMAL) {
 		amqp_channel_close(conn, 1, AMQP_REPLY_SUCCESS);
@@ -175,7 +170,16 @@ int amqp_fetch_pending(cwmp_str_t *msg)
 		return -1;
 	}
 
-	reply = amqp_basic_get(conn, 1, amqp_cstring_bytes("pending"), 1);
+	amqp_queue_bind(conn, 1, provisioning_queue, provisioning_exchange, amqp_empty_bytes, amqp_empty_table);
+	reply = amqp_get_rpc_reply(conn);
+	if (reply.reply_type != AMQP_RESPONSE_NORMAL) {
+		amqp_channel_close(conn, 1, AMQP_REPLY_SUCCESS);
+		amqp_connection_close(conn, AMQP_REPLY_SUCCESS);
+		amqp_destroy_connection(conn);
+		return -1;
+	}
+
+	reply = amqp_basic_get(conn, 1, provisioning_queue, 1);
 	if (reply.reply_type != AMQP_RESPONSE_NORMAL) {
 		amqp_channel_close(conn, 1, AMQP_REPLY_SUCCESS);
 		amqp_connection_close(conn, AMQP_REPLY_SUCCESS);
