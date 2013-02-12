@@ -34,8 +34,8 @@ freeacs_ng_LDADD =		\
 	$(AM_LIBS)		\
 	$(LIBFREECWMP_LIBS)	\
 	$(EVENT_LIBS)		\
-	$(NETSTRING_LIBS)	\
 	$(CSCGI_LIBS)		\
+	$(NETSTRING_LIBS)	\
 	$(LIBUCI_LIBS)		\
 	$(LIBXML_LIBS)		\
 	$(LIBRABBITMQ_LIBS)
