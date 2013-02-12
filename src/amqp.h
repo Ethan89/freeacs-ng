@@ -13,6 +13,6 @@
 #include <libfreecwmp.h>
 
 int amqp_notify(const cwmp_str_t *);
-int amqp_fetch_pending(cwmp_str_t *);
+int amqp_fetch_pending(cwmp_str_t *, cwmp_str_t *);
 
 #endif /* _FREEACS_NG_AMQP_H__ */

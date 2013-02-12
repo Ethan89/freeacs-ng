@@ -11,6 +11,7 @@
 #include <stdio.h>
 #include <stdint.h>
 #include <stdlib.h>
+#include <string.h>
 
 #include <libfreecwmp.h>
 
@@ -109,7 +110,7 @@ int amqp_notify(const cwmp_str_t *msg)
 	return 0;
 }
 
-int amqp_fetch_pending(cwmp_str_t *msg)
+int amqp_fetch_pending(cwmp_str_t *queue, cwmp_str_t *msg)
 {
 	amqp_connection_state_t conn;
 	amqp_rpc_reply_t reply;
@@ -147,39 +148,30 @@ int amqp_fetch_pending(cwmp_str_t *msg)
 		.len	= amqp_exchange.provisioning.len
 	};
 
+	amqp_exchange_declare(conn, 1, provisioning_exchange, amqp_cstring_bytes("topic"), 0, 1, amqp_empty_table);
+	reply = amqp_get_rpc_reply(conn);
+	if (reply.reply_type != AMQP_RESPONSE_NORMAL) {
+		amqp_channel_close(conn, 1, AMQP_REPLY_SUCCESS);
+		amqp_connection_close(conn, AMQP_REPLY_SUCCESS);
+		amqp_destroy_connection(conn);
+		return -1;
+	}
+
 	amqp_bytes_t provisioning_queue = {
-		.bytes	= amqp_queue.provisioning.data,
-		.len	= amqp_queue.provisioning.len
+		.bytes	= queue->data,
+		.len	= queue->len
 	};
 
-	amqp_exchange_declare(conn, 1, provisioning_exchange, amqp_cstring_bytes("fanout"), 0, 1, amqp_empty_table);
-	reply = amqp_get_rpc_reply(conn);
-	if (reply.reply_type != AMQP_RESPONSE_NORMAL) {
-		amqp_channel_close(conn, 1, AMQP_REPLY_SUCCESS);
-		amqp_connection_close(conn, AMQP_REPLY_SUCCESS);
-		amqp_destroy_connection(conn);
-		return -1;
-	}
-
-	amqp_queue_declare(conn, 1, provisioning_queue, 0, 1, 0, 0, amqp_empty_table);
-	reply = amqp_get_rpc_reply(conn);
-	if (reply.reply_type != AMQP_RESPONSE_NORMAL) {
-		amqp_channel_close(conn, 1, AMQP_REPLY_SUCCESS);
-		amqp_connection_close(conn, AMQP_REPLY_SUCCESS);
-		amqp_destroy_connection(conn);
-		return -1;
-	}
-
-	amqp_queue_bind(conn, 1, provisioning_queue, provisioning_exchange, amqp_empty_bytes, amqp_empty_table);
-	reply = amqp_get_rpc_reply(conn);
-	if (reply.reply_type != AMQP_RESPONSE_NORMAL) {
-		amqp_channel_close(conn, 1, AMQP_REPLY_SUCCESS);
-		amqp_connection_close(conn, AMQP_REPLY_SUCCESS);
-		amqp_destroy_connection(conn);
-		return -1;
-	}
-
 	reply = amqp_basic_get(conn, 1, provisioning_queue, 1);
+
+	/* on exception just assume that there is no queue */
+	if (reply.reply_type == AMQP_RESPONSE_SERVER_EXCEPTION) {
+		amqp_channel_close(conn, 1, AMQP_REPLY_SUCCESS);
+		amqp_connection_close(conn, AMQP_REPLY_SUCCESS);
+		amqp_destroy_connection(conn);
+		return 0;
+	}
+
 	if (reply.reply_type != AMQP_RESPONSE_NORMAL) {
 		amqp_channel_close(conn, 1, AMQP_REPLY_SUCCESS);
 		amqp_connection_close(conn, AMQP_REPLY_SUCCESS);
@@ -201,6 +193,9 @@ int amqp_fetch_pending(cwmp_str_t *msg)
 		return -1;
 	}
 
+	amqp_basic_get_ok_t *ok;
+	ok = (amqp_basic_get_ok_t *) reply.reply.decoded;
+
 	amqp_frame_t frame;
 
 	rc = amqp_simple_wait_frame(conn, &frame);
@@ -218,11 +213,63 @@ int amqp_fetch_pending(cwmp_str_t *msg)
 		return -1;
 	}
 
-	/* FIXME: add code to read the message */
+	size_t body_len = frame.payload.properties.body_size;
 
-	msg->data = NULL;
-	msg->len = 1;
+	msg->data = (u_char *) calloc(1, (body_len + 1) * sizeof(u_char));
+	if (msg->data == NULL) {
+		fprintf(stderr, "couldn't allocate memory for incoming AMQP message\n");
+		amqp_channel_close(conn, 1, AMQP_REPLY_SUCCESS);
+		amqp_connection_close(conn, AMQP_REPLY_SUCCESS);
+		amqp_destroy_connection(conn);
+		return -1;
+	}
+	msg->len = body_len;
 
+	while (body_len) {
+		rc = amqp_simple_wait_frame(conn, &frame);
+		if (rc != 0) {
+			amqp_channel_close(conn, 1, AMQP_REPLY_SUCCESS);
+			amqp_connection_close(conn, AMQP_REPLY_SUCCESS);
+			amqp_destroy_connection(conn);
+			return -1;
+		}
+
+		if (frame.frame_type != AMQP_FRAME_BODY) {
+			amqp_channel_close(conn, 1, AMQP_REPLY_SUCCESS);
+			amqp_connection_close(conn, AMQP_REPLY_SUCCESS);
+			amqp_destroy_connection(conn);
+			return -1;
+		}
+
+		/* we got whole message in the first chunk */
+		if (frame.payload.body_fragment.len == (msg->len)) {
+			if (snprintf(msg->data, msg->len + 1, "%.*s",
+				     frame.payload.body_fragment.len,
+				     frame.payload.body_fragment.bytes) == -1)
+			{
+				amqp_channel_close(conn, 1, AMQP_REPLY_SUCCESS);
+				amqp_connection_close(conn, AMQP_REPLY_SUCCESS);
+				amqp_destroy_connection(conn);
+				return -1;
+			}
+			goto done;
+		}
+
+		char *c = strdup(msg->data);
+		if (snprintf(msg->data, msg->len + 1, "%s%.*s",
+			     (c != NULL) ? c : "",
+			     frame.payload.body_fragment.len,
+			     frame.payload.body_fragment.bytes) == -1)
+		{
+			amqp_channel_close(conn, 1, AMQP_REPLY_SUCCESS);
+			amqp_connection_close(conn, AMQP_REPLY_SUCCESS);
+			amqp_destroy_connection(conn);
+			return -1;
+		}
+		body_len -= frame.payload.body_fragment.len;
+	}
+
+done:
 	amqp_channel_close(conn, 1, AMQP_REPLY_SUCCESS);
 	amqp_connection_close(conn, AMQP_REPLY_SUCCESS);
 	amqp_destroy_connection(conn);

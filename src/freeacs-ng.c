@@ -33,6 +33,8 @@
 #include "http.h"
 #include "xml.h"
 
+#include <json.h>
+
 static struct event_base *base;
 static struct evconnlistener *listener;
 
@@ -100,9 +102,6 @@ static struct connection_t *prepare_connection()
 	connection->http.content_length = 0;
 	connection->http.request_method = HTTP_UNKNOWN;
 	connection->http.remote_addr = NULL;
-
-	/* xml specific data */
-	connection->doc_in = NULL;
 
 	fprintf(stderr, "Connection object ready.\n");
 
@@ -230,12 +229,12 @@ static void finish_body(struct scgi_parser *parser)
 	evbuffer_ptr_set(connection->body, &here, 0, EVBUFFER_PTR_SET);
 	next = evbuffer_search(connection->body, "\0", 1, &here);
 	if (next.pos < 0) {
-		connection->msg_in.data = NULL;
-		connection->msg_in.len = 0;
+		connection->msg.data = NULL;
+		connection->msg.len = 0;
 	} else {
 		evbuffer_peek(connection->body, next.pos - here.pos, &here, &msg, 1);
-		connection->msg_in.data = msg.iov_base;
-		connection->msg_in.len = next.pos - here.pos;
+		connection->msg.data = msg.iov_base;
+		connection->msg.len = next.pos - here.pos;
 	}
 
 	/* finish by generating response */
@@ -245,77 +244,134 @@ static void finish_body(struct scgi_parser *parser)
 static void send_response(struct scgi_parser *parser)
 {
 	struct connection_t *connection = parser->object;
+	json_object *json_msg_in = NULL;
+	json_object *json_msg_out = NULL;
+	uintptr_t msg_tag = 0;
 	int rc;
 
 	fprintf(stderr, "Starting response.\n");
 
-	rc = amqp_notify(&connection->msg_in);
-	if (rc != 0) {
-		fprintf(stderr, "failed to send AMQP notification.\n");
-	}
-
 	struct evbuffer *output = bufferevent_get_output(connection->stream);
 
-	/* FIXME: for now we are just ignoring GET method */
-	if (connection->http.request_method == HTTP_GET) {
+	/* FIXME: ignore everything that is not POST method */
+	if (connection->http.request_method != HTTP_POST) {
 		evbuffer_add(output, ARRAY_AND_SIZE(HTTP_HEADER_204 NEWLINE) - 1);
 		return;
 	}
 
-	/* FIXME: for now we are only sending reboot requests */
-	if (connection->http.request_method == HTTP_POST
-	    && connection->http.content_length == 0)
+	json_msg_in = json_object_new_object();
+	if (json_msg_in == NULL) {
+		fprintf(stderr, "failed to initialize json object\n");
+		evbuffer_add(output, ARRAY_AND_SIZE(HTTP_HEADER_204 NEWLINE) - 1);
+		goto clean;
+	}
+
+	/* initialize xml parser only once */
+	lxml2_parser_init();
+
+	/* analyze received message */
+	if (connection->http.content_length != 0
+	    && xml_message_analyze(&connection->msg, &msg_tag, &json_msg_in))
 	{
-		cwmp_str_t action = {
+		fprintf(stderr, "failed while analyzing xml message\n");
+		evbuffer_add(output, ARRAY_AND_SIZE(HTTP_HEADER_204 NEWLINE) - 1);
+		goto clean;
+	}
+
+	if (connection->http.remote_addr) {
+		json_object *remote_addr = json_object_new_string(connection->http.remote_addr);
+		json_object_object_add(json_msg_in, "remote_addr", remote_addr);
+	}
+
+	if (msg_tag & XML_CWMP_TYPE_INFORM) {
+		char *c;
+
+		c = json_object_to_json_string(json_msg_in);
+		cwmp_str_t msg = {
+			.data = c,
+			.len = strlen(c)
+		};
+
+		rc = amqp_notify(&msg);
+		if (rc != 0) {
+			fprintf(stderr, "failed to send AMQP notification\n");
+		}
+
+		evbuffer_add(output, ARRAY_AND_SIZE(HTTP_HEADER_200_CONTENT_XML) - 1);
+		evbuffer_add(output, ARRAY_AND_SIZE(XML_CWMP_GENERIC_HEAD) - 1);
+		evbuffer_add(output, ARRAY_AND_SIZE(XML_CWMP_INFORM_RESPONSE) - 1);
+		evbuffer_add(output, ARRAY_AND_SIZE(XML_CWMP_GENERIC_TAIL) - 1);
+
+		goto clean;
+	}
+
+	if (connection->http.content_length == 0
+	    || msg_tag & XML_CWMP_TYPE_SET_PARAM_RES)
+	{
+		cwmp_str_t queue = {
+			.data	= amqp_queue.provisioning.data,
+			.len	= amqp_queue.provisioning.len
+		};
+
+		if (strcmp("@remote_addr", amqp_queue.provisioning.data) == 0)
+		{
+			queue.data = connection->http.remote_addr;
+			queue.len = strlen(connection->http.remote_addr);
+		};
+
+		cwmp_str_t msg = {
 			.data	= NULL,
 			.len	= 0
 		};
 
-		rc = amqp_fetch_pending(&action);
+		rc = amqp_fetch_pending(&queue, &msg);
 		if (rc != 0) {
-			fprintf(stderr, "failed to fetch AMQP action.\n");
+			fprintf(stderr, "failed to fetch AMQP action\n");
+			evbuffer_add(output, ARRAY_AND_SIZE(HTTP_HEADER_204 NEWLINE) - 1);
+			goto clean;
 		}
 
-		if (action.len) {
+		if (msg.data == NULL) {
+			evbuffer_add(output, ARRAY_AND_SIZE(HTTP_HEADER_204 NEWLINE) - 1);
+			goto clean;
+		}
+
+		json_msg_out = json_tokener_parse(msg.data);
+
+		free(msg.data);
+		msg.data = NULL;
+		msg.len = 0;
+
+		if (json_msg_out == NULL) {
+			fprintf(stderr, "failed to parse json data\n");
+			evbuffer_add(output, ARRAY_AND_SIZE(HTTP_HEADER_204 NEWLINE) - 1);
+			goto clean;
+		}
+
+		rc = xml_message_create(&msg, json_msg_out);
+		if (rc == 0) {
 			evbuffer_add(output, ARRAY_AND_SIZE(HTTP_HEADER_200_CONTENT_XML) - 1);
-			evbuffer_add(output, ARRAY_AND_SIZE(XML_SOAP_ENVELOPE_HEAD) - 1);
-			evbuffer_add(output, ARRAY_AND_SIZE(XML_CWMP_HEAD) - 1);
-			evbuffer_add(output, ARRAY_AND_SIZE(XML_CWMP_BODY_HEAD) - 1);
-			evbuffer_add(output, ARRAY_AND_SIZE(XML_CWMP_CMD_REBOOT) - 1);
-			evbuffer_add(output, ARRAY_AND_SIZE(XML_CWMP_GENERIC_TAIL) - 1);
+			/* FIXME: ugly hack to remove xml node from the xml message */
+			int trim = strlen(XML_PROLOG) - 1;
+			evbuffer_add(output,
+				     connection->msg.data + trim,
+				     connection->msg.len - trim);
 		} else {
 			evbuffer_add(output, ARRAY_AND_SIZE(HTTP_HEADER_204 NEWLINE) - 1);
 		}
 
-		free(action.data);
-		goto clean;
-	}
+		free(msg.data);
+		msg.data = NULL;
+		msg.len = 0;
 
-	lxml2_parser_init();
-
-	/* FIXME: for now we are just ignoring case when reading XML failed */
-	if (xml_read_message(&connection->doc_in, &connection->msg_in)) {
-		evbuffer_add(output, ARRAY_AND_SIZE(HTTP_HEADER_204 NEWLINE) - 1);
-		goto clean;
-	}
-
-	if (xml_message_tag(connection->doc_in, &connection->msg_tag)) {
-		evbuffer_add(output, ARRAY_AND_SIZE(HTTP_HEADER_204 NEWLINE) - 1);
-		goto clean;
-	}
-
-	if (connection->msg_tag & XML_CWMP_TYPE_INFORM) {
-		evbuffer_add(output, ARRAY_AND_SIZE(HTTP_HEADER_200_CONTENT_XML) - 1);
-		evbuffer_add(output, ARRAY_AND_SIZE(XML_CWMP_GENERIC_HEAD) - 1);
-		evbuffer_add(output, ARRAY_AND_SIZE(XML_CWMP_INFORM_RESPONSE) -1);
-		evbuffer_add(output, ARRAY_AND_SIZE(XML_CWMP_GENERIC_TAIL) - 1);
 		goto clean;
 	}
 
 	evbuffer_add(output, ARRAY_AND_SIZE(HTTP_HEADER_204 NEWLINE) - 1);
 
 clean:
-	if (connection->doc_in) lxml2_doc_free(connection->doc_in);
+	if (json_msg_in) json_object_put(json_msg_in);
+	if (json_msg_out) json_object_put(json_msg_out);
 	lxml2_parser_cleanup();
 	connection->request_status = REQUEST_FINISHED;
 }

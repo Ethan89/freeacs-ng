@@ -13,7 +13,6 @@
 #include <scgi.h>
 
 #include "http.h"
-#include "xml.h"
 
 #define REQUEST_RECEIVED	0x1
 #define REQUEST_FINISHED	0x2
@@ -37,10 +36,8 @@ struct connection_t
 	/* HTTP related data */
 	struct http_t http;
 
-	/* XML related data */
-	cwmp_str_t msg_in;
-	uintptr_t msg_tag;
-	lxml2_doc *doc_in;
+	/* received message */
+	cwmp_str_t msg;
 };
 
 /* SCGI callback functions */
