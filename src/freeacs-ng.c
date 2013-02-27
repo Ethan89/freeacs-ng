@@ -133,13 +133,7 @@ void release_connection(struct connection_t *connection, bool error)
 
 #ifdef DUMMY_MODE
 	/* stop the event loop */
-	event_base_loopbreak(base);
-
-	/* free allocated event loop resources */
-	evconnlistener_free(listener);
-	event_base_free(base);
-
-	config_exit();
+	(void) event_base_loopbreak(base);
 #endif /* DUMMY_MODE */
 }
 
@@ -445,12 +439,7 @@ static void accept_error_cb(struct evconnlistener *listener, void *context)
 			"Shutting down.\n", error, evutil_socket_error_to_string(error));
 
 	/* stop the event loop */
-	event_base_loopexit(base, NULL);
-
-	/* free allocated event loop resources */
-	evconnlistener_free(listener);
-	event_base_free(base);
-	event_base_loopexit(base, NULL);
+	(void) event_base_loopexit(base, NULL);
 }
 
 int main(int argc, char **argv)
@@ -479,15 +468,11 @@ int main(int argc, char **argv)
 	/* process event notifications forever */
 	event_base_dispatch(base);
 
-	/* free configuration allocations */
-	free(amqp.host);
-	free(amqp.user);
-	free(amqp.pass);
-	free(amqp.virtual_host);
-	free(amqp_exchange.broadcast.data);
-	free(amqp_exchange.provisioning.data);
-	free(amqp_queue.broadcast.data);
-	free(amqp_queue.provisioning.data);
+	/* free allocated event loop resources */
+	evconnlistener_free(listener);
+	event_base_free(base);
+
+	config_exit();
 
 	return EXIT_SUCCESS;
 }

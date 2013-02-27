@@ -362,6 +362,15 @@ config_init_package(const char *c)
 void config_exit(void)
 {
 	uci_free_context(uci_ctx);
+
+	free(amqp.host);
+	free(amqp.user);
+	free(amqp.pass);
+	free(amqp.virtual_host);
+	free(amqp_exchange.broadcast.data);
+	free(amqp_exchange.provisioning.data);
+	free(amqp_queue.broadcast.data);
+	free(amqp_queue.provisioning.data);
 }
 
 void config_load(void)
