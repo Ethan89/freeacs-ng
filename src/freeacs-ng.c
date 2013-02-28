@@ -99,6 +99,7 @@ static struct connection_t *prepare_connection()
 	/* http specific data */
 	connection->http.content_length = 0;
 	connection->http.request_method = HTTP_UNKNOWN;
+	connection->http.remote_addr = NULL;
 
 	/* xml specific data */
 	connection->doc_in = NULL;

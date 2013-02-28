@@ -38,6 +38,7 @@ struct http_t
 {
         size_t content_length;
         uintptr_t request_method;
+        char *remote_addr;
 };
 
 void http_parse_param(const char *, const char *, struct http_t *);

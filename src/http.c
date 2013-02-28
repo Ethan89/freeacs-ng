@@ -10,6 +10,7 @@
 #include <stdio.h>
 #include <stdint.h>
 #include <stdlib.h>
+#include <string.h>
 
 #include "http.h"
 
@@ -35,6 +36,11 @@ __inline void http_parse_param(const char *name, const char *data,
 		}
 
 		http->request_method = HTTP_GET;
+		return;
+	}
+
+	if (!strcmp("REMOTE_ADDR", name)) {
+		http->remote_addr = data;
 		return;
 	}
 }
