@@ -20,6 +20,7 @@ freeacs_ng_CFLAGS =		\
 	$(CSCGI_CFLAGS)		\
 	$(LIBUCI_CFLAGS)	\
 	$(LIBXML_CFLAGS)	\
+	$(LIBJSON_CFLAGS)	\
 	$(LIBRABBITMQ_CFLAGS)
 
 freeacs_ng_LDFLAGS =		\
@@ -38,4 +39,5 @@ freeacs_ng_LDADD =		\
 	$(NETSTRING_LIBS)	\
 	$(LIBUCI_LIBS)		\
 	$(LIBXML_LIBS)		\
+	$(LIBJSON_LIBS)		\
 	$(LIBRABBITMQ_LIBS)

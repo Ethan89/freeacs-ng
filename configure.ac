@@ -74,6 +74,7 @@ LIBUCI_LIBS='-luci'
 AC_SUBST([LIBUCI_LIBS])
 
 PKG_CHECK_MODULES(LIBXML, libxml-2.0)
+PKG_CHECK_MODULES(LIBJSON, json)
 PKG_CHECK_MODULES(LIBRABBITMQ, librabbitmq)
 
 AC_ARG_ENABLE(dummy_mode, [AS_HELP_STRING([--enable-dummy-mode], [enable dummy mode])], AC_DEFINE(DUMMY_MODE),)
