@@ -353,9 +353,7 @@ static void send_response(struct scgi_parser *parser)
 			evbuffer_add(output, ARRAY_AND_SIZE(HTTP_HEADER_200_CONTENT_XML) - 1);
 			/* FIXME: ugly hack to remove xml node from the xml message */
 			int trim = strlen(XML_PROLOG) - 1;
-			evbuffer_add(output,
-				     connection->msg.data + trim,
-				     connection->msg.len - trim);
+			evbuffer_add(output, msg.data + trim, msg.len - trim);
 		} else {
 			evbuffer_add(output, ARRAY_AND_SIZE(HTTP_HEADER_204 NEWLINE) - 1);
 		}
