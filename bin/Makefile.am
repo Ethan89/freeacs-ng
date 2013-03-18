@@ -7,8 +7,6 @@ freeacs_ng_SOURCES =		\
 	../src/amqp.c		\
 	../src/config.h		\
 	../src/config.c		\
-	../src/http.h		\
-	../src/http.c		\
 	../src/xml.h		\
 	../src/xml.c
 

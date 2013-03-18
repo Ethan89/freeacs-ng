@@ -11,11 +11,43 @@
 #define _FREEACS_NG_H__
 
 #include <scgi.h>
+#include <libfreecwmp.h>
 
-#include "http.h"
+#define HTTP_UNKNOWN	0x1
+#define HTTP_GET	0x2
+#define HTTP_POST	0x4
 
-#define REQUEST_RECEIVED	0x1
-#define REQUEST_FINISHED	0x2
+#define HTTP_HEADER_200 \
+	"Status: 200 OK" NEWLINE
+
+#define HTTP_HEADER_204 \
+	"Status: 204 No Content" NEWLINE
+
+#define HTTP_HEADER_CONTENT_XML \
+	"Content-Type: text/xml" NEWLINE
+
+#define HTTP_HEADER_200_CONTENT_XML \
+	HTTP_HEADER_200 \
+	HTTP_HEADER_CONTENT_XML \
+	NEWLINE
+
+#define REQUEST_METHOD		"REQUEST_METHOD"
+#define REQUEST_METHOD_POST	"POST"
+#define CONTENT_LENGTH		"CONTENT_LENGTH"
+#define REMOTE_ADDR		"REMOTE_ADDR"
+
+enum {
+	_REQUEST_METHOD,
+	_CONTENT_LENGTH,
+	_REMOTE_ADDR,
+	__HEADER_MAX
+};
+
+enum {
+	REQUEST_RECEIVED,
+	REQUEST_HEAD_APPROVED,
+	REQUEST_FINISHED
+};
 
 /* bookkeeping for each connection */
 struct connection_t
@@ -30,11 +62,11 @@ struct connection_t
 	struct evbuffer *head;
 	struct evbuffer *body;
 
+	/* request headers */
+	cwmp_str_t header[__HEADER_MAX];
+
 	/* request status */
 	uintptr_t request_status;
-
-	/* HTTP related data */
-	struct http_t http;
 
 	/* received message */
 	cwmp_str_t msg;

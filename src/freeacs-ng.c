@@ -24,16 +24,15 @@
 #include <libxml/xpath.h>
 #include <libxml/xpathInternals.h>
 
+#include <json.h>
 #include <scgi.h>
 
 #include "freeacs-ng.h"
 
 #include "amqp.h"
 #include "config.h"
-#include "http.h"
 #include "xml.h"
 
-#include <json.h>
 
 static struct event_base *base;
 static struct evconnlistener *listener;
@@ -93,15 +92,16 @@ static struct connection_t *prepare_connection()
 	/* make sure SCGI callbacks can access the connection object */
 	connection->parser.object = connection;
 
+	/* headers initialization */
+	connection->header[_REMOTE_ADDR].data = NULL;
+	connection->header[_CONTENT_LENGTH].data = NULL;
+	connection->header[_REMOTE_ADDR].data = NULL;
+
+	/* request status initialization */
 	connection->request_status = REQUEST_RECEIVED;
 
 	/* will be initialized later */
 	connection->stream = 0;
-
-	/* http specific data */
-	connection->http.content_length = 0;
-	connection->http.request_method = HTTP_UNKNOWN;
-	connection->http.remote_addr = NULL;
 
 	fprintf(stderr, "Connection object ready.\n");
 
@@ -175,6 +175,7 @@ static void finish_head(struct scgi_parser *parser)
 	struct evbuffer_iovec name;
 	struct evbuffer_iovec data;
 	struct connection_t *connection = parser->object;
+	struct evbuffer *output;
 
 	fprintf(stderr, "Headers done.\n");
 
@@ -194,14 +195,61 @@ static void finish_head(struct scgi_parser *parser)
 		evbuffer_peek(connection->head, next.pos - here.pos, &here, &data, 1);
 		data.iov_len = next.pos - here.pos;
 
-		http_parse_param((const char *)name.iov_base, (const char *)data.iov_base,
-				 &connection->http);
+		if (strcmp((const char *) name.iov_base, CONTENT_LENGTH) == 0) {
+			connection->header[_CONTENT_LENGTH].data = (char *) data.iov_base;
+			connection->header[_CONTENT_LENGTH].len = strlen((const char *) data.iov_base);
+			goto next;
+		};
 
+		if (strcmp((const char *) name.iov_base, REQUEST_METHOD) == 0) {
+			connection->header[_REQUEST_METHOD].data = (char *) data.iov_base;
+			connection->header[_REQUEST_METHOD].len = strlen((const char *) data.iov_base);
+			goto next;
+		};
+
+		if (strcmp((const char *) name.iov_base, REMOTE_ADDR) == 0) {
+			connection->header[_REMOTE_ADDR].data = (char *) data.iov_base;
+			connection->header[_REMOTE_ADDR].len = strlen((const char *) data.iov_base);
+			goto next;
+		};
+
+next:
 		/* locate the next header */
 		evbuffer_ptr_set(connection->head, &next, 1, EVBUFFER_PTR_ADD);
 		here = next;
 		next = evbuffer_search(connection->head, "\0", 1, &next);
 	}
+
+	/* headers checking */
+	char *header = NULL;
+
+	if (connection->header[_REMOTE_ADDR].data == NULL) {
+		header = REQUEST_METHOD;
+		goto error;
+	};
+
+	if (connection->header[_CONTENT_LENGTH].data == NULL) {
+		header = CONTENT_LENGTH;
+		goto error;
+	};
+
+	if (connection->header[_REMOTE_ADDR].data == NULL) {
+		header = REMOTE_ADDR;
+		goto error;
+	};
+
+	/* needed headers have been found */
+	connection->request_status = REQUEST_HEAD_APPROVED;
+
+	return;
+
+error:
+	/* FIXME: throw internal server error */
+	fprintf(stderr, "%s header is missing\n", header);
+	output = bufferevent_get_output(connection->stream);
+	evbuffer_add(output, ARRAY_AND_SIZE(HTTP_HEADER_204 NEWLINE) - 1);
+	connection->request_status = REQUEST_FINISHED;
+	return;
 }
 
 /* buffer body data inside connection object */
@@ -249,12 +297,14 @@ static void send_response(struct scgi_parser *parser)
 	uintptr_t msg_tag = 0;
 	int rc;
 
+	if (connection->request_status == REQUEST_FINISHED) return;
+
 	fprintf(stderr, "Starting response.\n");
 
 	struct evbuffer *output = bufferevent_get_output(connection->stream);
 
 	/* FIXME: ignore everything that is not POST method */
-	if (connection->http.request_method != HTTP_POST) {
+	if (strcmp(connection->header[_REQUEST_METHOD].data, REQUEST_METHOD_POST)) {
 		evbuffer_add(output, ARRAY_AND_SIZE(HTTP_HEADER_204 NEWLINE) - 1);
 		return;
 	}
@@ -270,7 +320,7 @@ static void send_response(struct scgi_parser *parser)
 	lxml2_parser_init();
 
 	/* analyze received message */
-	if (connection->http.content_length != 0
+	if (atoi(connection->header[_CONTENT_LENGTH].data) != 0
 	    && xml_message_analyze(&connection->msg, &msg_tag, &json_msg_in))
 	{
 		fprintf(stderr, "failed while analyzing xml message\n");
@@ -278,15 +328,14 @@ static void send_response(struct scgi_parser *parser)
 		goto clean;
 	}
 
-	if (connection->http.remote_addr) {
-		json_object *remote_addr = json_object_new_string(connection->http.remote_addr);
-		json_object_object_add(json_msg_in, "remote_addr", remote_addr);
-	}
+	json_object *remote_addr;
+	remote_addr = json_object_new_string(connection->header[_REMOTE_ADDR].data);
+	json_object_object_add(json_msg_in, "remote_addr", remote_addr);
 
 	if (msg_tag & XML_CWMP_TYPE_INFORM) {
-		char *c;
+		u_char *c;
 
-		c = json_object_to_json_string(json_msg_in);
+		c = (u_char *) json_object_to_json_string(json_msg_in);
 		cwmp_str_t msg = {
 			.data = c,
 			.len = strlen(c)
@@ -305,7 +354,7 @@ static void send_response(struct scgi_parser *parser)
 		goto clean;
 	}
 
-	if (connection->http.content_length == 0
+	if (atoi(connection->header[_CONTENT_LENGTH].data) == 0
 	    || msg_tag & XML_CWMP_TYPE_SET_PARAM_RES)
 	{
 		cwmp_str_t queue = {
@@ -315,8 +364,8 @@ static void send_response(struct scgi_parser *parser)
 
 		if (strcmp("@remote_addr", amqp_queue.provisioning.data) == 0)
 		{
-			queue.data = connection->http.remote_addr;
-			queue.len = strlen(connection->http.remote_addr);
+			queue.data = connection->header[_REMOTE_ADDR].data;
+			queue.len = connection->header[_REMOTE_ADDR].len;
 		};
 
 		cwmp_str_t msg = {
@@ -408,8 +457,14 @@ static void read_cb(struct bufferevent *stream, void *context)
 		goto error;
 	}
 
+	int content_length = -1;
+
+	if (connection->request_status == REQUEST_HEAD_APPROVED) {
+		content_length = atoi(connection->header[_CONTENT_LENGTH].data);
+	}
+
 	if (connection->parser.state == scgi_parser_body
-	    && connection->parser.body_size == connection->http.content_length)
+	    && connection->parser.body_size == content_length)
 	{
 		finish_body(context);
 	}
@@ -428,8 +483,10 @@ static void write_cb(struct bufferevent *stream, void *context)
 	struct evbuffer *output = bufferevent_get_output(stream);
 	struct evbuffer *input  = bufferevent_get_input(stream);
 
+	if (connection->request_status < REQUEST_HEAD_APPROVED)
+		return;
+
 	if (connection->request_status == REQUEST_FINISHED
-	    && connection->parser.body_size == connection->http.content_length
 	    && evbuffer_get_length(output) == 0
 	    && evbuffer_get_length(input) == 0)
 	{
