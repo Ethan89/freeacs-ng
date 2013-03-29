@@ -58,35 +58,12 @@ int amqp_notify(const cwmp_str_t *msg)
 		.len	= amqp_exchange.broadcast.len
 	};
 
-	amqp_bytes_t b_queue = {
-		.bytes	= amqp_queue.broadcast.data,
-		.len	= amqp_queue.broadcast.len
-	};
-
 	amqp_bytes_t b_msg = {
 		.bytes	= msg->data,
 		.len	= msg->len
 	};
 
 	amqp_exchange_declare(conn, 1, b_exchange, amqp_cstring_bytes("fanout"), 0, 1, amqp_empty_table);
-	reply = amqp_get_rpc_reply(conn);
-	if (reply.reply_type != AMQP_RESPONSE_NORMAL) {
-		amqp_channel_close(conn, 1, AMQP_REPLY_SUCCESS);
-		amqp_connection_close(conn, AMQP_REPLY_SUCCESS);
-		amqp_destroy_connection(conn);
-		return -1;
-	}
-
-	amqp_queue_declare(conn, 1, b_queue, 0, 1, 0, 0, amqp_empty_table);
-	reply = amqp_get_rpc_reply(conn);
-	if (reply.reply_type != AMQP_RESPONSE_NORMAL) {
-		amqp_channel_close(conn, 1, AMQP_REPLY_SUCCESS);
-		amqp_connection_close(conn, AMQP_REPLY_SUCCESS);
-		amqp_destroy_connection(conn);
-		return -1;
-	}
-
-	amqp_queue_bind(conn, 1, b_queue, b_exchange, amqp_empty_bytes, amqp_empty_table);
 	reply = amqp_get_rpc_reply(conn);
 	if (reply.reply_type != AMQP_RESPONSE_NORMAL) {
 		amqp_channel_close(conn, 1, AMQP_REPLY_SUCCESS);

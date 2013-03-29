@@ -18,5 +18,4 @@ config amqp_exchange
 	option provisioning 'freeacs-ng provisioning fanout'
 
 config amqp_queue
-	option broadcast 'freeacs-ng broadcast main'
 	option provisioning '@remote_addr'

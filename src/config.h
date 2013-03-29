@@ -35,7 +35,6 @@ struct amqp_exchange_t {
 };
 
 struct amqp_queue_t {
-	cwmp_str_t broadcast;
 	cwmp_str_t provisioning;
 };
 
