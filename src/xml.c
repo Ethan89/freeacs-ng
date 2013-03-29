@@ -7,14 +7,17 @@
  *	Copyright (C) 2012 Luka Perkov <freeacs-ng@lukaperkov.net>
  */
 
-#include <stdio.h>
 #include <stdint.h>
+#include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 
 #include <json.h>
 #include <libfreecwmp.h>
 
 #include "xml.h"
+
+#include "freeacs-ng.h"
 
 int xml_message_analyze(cwmp_str_t *msg, uintptr_t *tag, json_object **json_obj)
 {
@@ -119,6 +122,54 @@ int xml_message_analyze(cwmp_str_t *msg, uintptr_t *tag, json_object **json_obj)
 	}
 	lxml2_xpath_free_obj(xpath_obj);
 
+	/* CWMP-1-0 set parameter response message */
+	xpath_expr = "/soap_env:Envelope/soap_env:Body/cwmp_1_0:SetParameterValuesResponse";
+	xpath_obj = lxml2_xpath_eval_expr(xpath_expr, xpath_ctx);
+	if (xpath_obj == NULL) {
+		fprintf(stderr, "could not create xpath object\n");
+		goto error;
+	}
+
+	for(int i = 0; i < ((xpath_obj->nodesetval) ? xpath_obj->nodesetval->nodeNr : 0); ++i) {
+		if(xpath_obj->nodesetval->nodeTab[i]->type == XML_ELEMENT_NODE) {
+			*tag |= XML_CWMP_VERSION_1_0;
+			*tag |= XML_CWMP_TYPE_SET_PARAM_RES;
+		}
+	}
+	lxml2_xpath_free_obj(xpath_obj);
+
+	/* CWMP-1-1 set parameter response message */
+	xpath_expr = "/soap_env:Envelope/soap_env:Body/cwmp_1_1:SetParameterValuesResponse";
+	xpath_obj = lxml2_xpath_eval_expr(xpath_expr, xpath_ctx);
+	if (xpath_obj == NULL) {
+		fprintf(stderr, "could not create xpath object\n");
+		goto error;
+	}
+
+	for(int i = 0; i < ((xpath_obj->nodesetval) ? xpath_obj->nodesetval->nodeNr : 0); ++i) {
+		if(xpath_obj->nodesetval->nodeTab[i]->type == XML_ELEMENT_NODE) {
+			*tag |= XML_CWMP_VERSION_1_1;
+			*tag |= XML_CWMP_TYPE_SET_PARAM_RES;
+		}
+	}
+	lxml2_xpath_free_obj(xpath_obj);
+
+	/* CWMP-1-2 set parameter response message */
+	xpath_expr = "/soap_env:Envelope/soap_env:Body/cwmp_1_2:SetParameterValuesResponse";
+	xpath_obj = lxml2_xpath_eval_expr(xpath_expr, xpath_ctx);
+	if (xpath_obj == NULL) {
+		fprintf(stderr, "could not create xpath object\n");
+		goto error;
+	}
+
+	for(int i = 0; i < ((xpath_obj->nodesetval) ? xpath_obj->nodesetval->nodeNr : 0); ++i) {
+		if(xpath_obj->nodesetval->nodeTab[i]->type == XML_ELEMENT_NODE) {
+			*tag |= XML_CWMP_VERSION_1_2;
+			*tag |= XML_CWMP_TYPE_SET_PARAM_RES;
+		}
+	}
+	lxml2_xpath_free_obj(xpath_obj);
+
 	if (*tag & XML_CWMP_VERSION_1_0) xpath_expr = "//cwmp_1_0:ID";
 	if (*tag & XML_CWMP_VERSION_1_1) xpath_expr = "//cwmp_1_1:ID";
 	if (*tag & XML_CWMP_VERSION_1_2) xpath_expr = "//cwmp_1_2:ID";
@@ -184,9 +235,9 @@ int xml_message_analyze(cwmp_str_t *msg, uintptr_t *tag, json_object **json_obj)
 		json_object_object_add(*json_obj, "parameters", json_parameters);
 	}
 
-	if (*tag & XML_CWMP_VERSION_1_0) xpath_expr = "//cwmp_1_0:SetParameterValuesResponse";
-	if (*tag & XML_CWMP_VERSION_1_1) xpath_expr = "//cwmp_1_1:SetParameterValuesResponse";
-	if (*tag & XML_CWMP_VERSION_1_2) xpath_expr = "//cwmp_1_2:SetParameterValuesResponse";
+	if (*tag & XML_CWMP_VERSION_1_0) xpath_expr = "//cwmp_1_0:ID";
+	if (*tag & XML_CWMP_VERSION_1_1) xpath_expr = "//cwmp_1_1:ID";
+	if (*tag & XML_CWMP_VERSION_1_2) xpath_expr = "//cwmp_1_2:ID";
 
 	xpath_obj = lxml2_xpath_eval_expr(xpath_expr, xpath_ctx);
 	if (xpath_obj == NULL) {
@@ -196,9 +247,11 @@ int xml_message_analyze(cwmp_str_t *msg, uintptr_t *tag, json_object **json_obj)
 
 	for(int i = 0; i < ((xpath_obj->nodesetval) ? xpath_obj->nodesetval->nodeNr : 0); ++i) {
 		if(xpath_obj->nodesetval->nodeTab[i]->type == XML_ELEMENT_NODE) {
-			*tag |= XML_CWMP_TYPE_SET_PARAM_RES;
+			u_char *id = lxml2_node_get_content(xpath_obj->nodesetval->nodeTab[i]);
+			free(id);
 		}
 	}
+	lxml2_xpath_free_obj(xpath_obj);
 
 	if (*tag & XML_CWMP_TYPE_SET_PARAM_RES) {
 		xpath_expr = "//Status";
@@ -215,11 +268,12 @@ int xml_message_analyze(cwmp_str_t *msg, uintptr_t *tag, json_object **json_obj)
 				value = lxml2_node_get_content(xpath_obj->nodesetval->nodeTab[i]);
 			}
 		}
+		lxml2_xpath_free_obj(xpath_obj);
+
 		json_object_object_add(*json_obj, "type", json_object_new_string("set_parameter_value_response"));
 		if (value) json_object_object_add(*json_obj, "status", json_object_new_string(value));
 		free(value);
 	}
-	lxml2_xpath_free_obj(xpath_obj);
 
 	lxml2_xpath_free_ctx(xpath_ctx);
 	lxml2_doc_free(doc);
