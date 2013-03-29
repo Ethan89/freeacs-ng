@@ -289,7 +289,19 @@ error:
 
 int xml_message_create(cwmp_str_t *msg, json_object *json_obj)
 {
-	if (json_obj == NULL) return -1;
+	if (json_obj == NULL) {
+		fprintf(stderr, "json object can not be NULL\n");
+		return -1;
+	}
+
+	if (json_object_object_get(json_obj, "cwmp") == NULL) {
+		fprintf(stderr, "inside json object there is no cwmp object\n");
+		return -1;
+	}
+
+	json_object *json_cwmp_obj;
+	json_cwmp_obj = json_object_object_get(json_obj, "cwmp");
+
 
 	lxml2_doc *doc = NULL;
 	lxml2_ns *ns_soap_env = NULL, *ns_cwmp = NULL;
@@ -340,8 +352,8 @@ int xml_message_create(cwmp_str_t *msg, json_object *json_obj)
 		goto error;
 	}
 
-	if (json_object_object_get(json_obj, "id")
-	    && json_object_get_string(json_object_object_get(json_obj, "id")))
+	if (json_object_object_get(json_cwmp_obj, "id")
+	    && json_object_get_string(json_object_object_get(json_cwmp_obj, "id")))
 	{
 		xpath_expr = "/soap_env:Envelope/soap_env:Header";
 		xpath_obj = lxml2_xpath_eval_expr(xpath_expr, xpath_ctx);
@@ -355,15 +367,15 @@ int xml_message_create(cwmp_str_t *msg, json_object *json_obj)
 				lxml2_node *n = xmlNewChild(xpath_obj->nodesetval->nodeTab[i],
 							   ns_cwmp,
 							   (u_char *) "ID",
-							   (u_char *) json_object_get_string(json_object_object_get(json_obj, "id")));
+							   (u_char *) json_object_get_string(json_object_object_get(json_cwmp_obj, "id")));
 				(void) lxml2_set_prop(n, (u_char *) "soap_env:mustUnderstand", (u_char *) "1");
 			}
 		}
 		lxml2_xpath_free_obj(xpath_obj);
 	}
 
-	if (json_object_object_get(json_obj, "set_parameter_values") != NULL) {
-		json_object *j = json_object_object_get(json_obj, "set_parameter_values");
+	if (json_object_object_get(json_cwmp_obj, "set_parameter_values") != NULL) {
+		json_object *j = json_object_object_get(json_cwmp_obj, "set_parameter_values");
 
 		xpath_expr = "/soap_env:Envelope/soap_env:Body";
 		xpath_obj = lxml2_xpath_eval_expr(xpath_expr, xpath_ctx);
@@ -416,8 +428,8 @@ int xml_message_create(cwmp_str_t *msg, json_object *json_obj)
 		goto done;
 	}
 
-	if (json_object_object_get(json_obj, "download") != NULL) {
-		json_object *j = json_object_object_get(json_obj, "download");
+	if (json_object_object_get(json_cwmp_obj, "download") != NULL) {
+		json_object *j = json_object_object_get(json_cwmp_obj, "download");
 
 		xpath_expr = "/soap_env:Envelope/soap_env:Body";
 		xpath_obj = lxml2_xpath_eval_expr(xpath_expr, xpath_ctx);
@@ -496,7 +508,7 @@ int xml_message_create(cwmp_str_t *msg, json_object *json_obj)
 	}
 
 done:
-	lxml2_doc_dump_memory(doc, &msg->data, &msg->len);
+	lxml2_doc_dump_memory(doc, &msg->data, (int *) &msg->len);
 
 	if (xpath_ctx) lxml2_xpath_free_ctx(xpath_ctx);
 	if (ns_soap_env) lxml2_ns_free(ns_soap_env);
