@@ -9,7 +9,6 @@
 
 #include <errno.h>
 #include <stdbool.h>
-#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 
@@ -93,12 +92,14 @@ static struct connection_t *prepare_connection()
 	connection->parser.object = connection;
 
 	/* headers initialization */
-	connection->header[_REMOTE_ADDR].data = NULL;
 	connection->header[_CONTENT_LENGTH].data = NULL;
+	connection->header[_HTTP_AUTHORIZATION].data = NULL;
+	connection->header[_HTTP_COOKIE].data = NULL;
 	connection->header[_REMOTE_ADDR].data = NULL;
+	connection->header[_REQUEST_METHOD].data = NULL;
 
-	/* request status initialization */
-	connection->request_status = REQUEST_RECEIVED;
+	/* configure initial tag */
+	connection->tag = REQUEST_RECEIVED;
 
 	/* will be initialized later */
 	connection->stream = 0;
@@ -195,23 +196,60 @@ static void finish_head(struct scgi_parser *parser)
 		evbuffer_peek(connection->head, next.pos - here.pos, &here, &data, 1);
 		data.iov_len = next.pos - here.pos;
 
-		if (strcmp((const char *) name.iov_base, CONTENT_LENGTH) == 0) {
-			connection->header[_CONTENT_LENGTH].data = (char *) data.iov_base;
-			connection->header[_CONTENT_LENGTH].len = strlen((const char *) data.iov_base);
-			goto next;
-		};
+		if (connection->header[_CONTENT_LENGTH].data == NULL
+		    && strcmp((const char *) name.iov_base, CONTENT_LENGTH) == 0)
+		{
+			connection->header[_CONTENT_LENGTH].data =
+				(char *) data.iov_base;
+			connection->header[_CONTENT_LENGTH].len =
+				strlen((const char *) data.iov_base);
 
-		if (strcmp((const char *) name.iov_base, REQUEST_METHOD) == 0) {
-			connection->header[_REQUEST_METHOD].data = (char *) data.iov_base;
-			connection->header[_REQUEST_METHOD].len = strlen((const char *) data.iov_base);
 			goto next;
-		};
+		}
 
-		if (strcmp((const char *) name.iov_base, REMOTE_ADDR) == 0) {
-			connection->header[_REMOTE_ADDR].data = (char *) data.iov_base;
-			connection->header[_REMOTE_ADDR].len = strlen((const char *) data.iov_base);
+		if (connection->header[_HTTP_AUTHORIZATION].data == NULL
+		    && strcmp((const char *) name.iov_base, HTTP_AUTHORIZATION) == 0)
+		{
+			connection->header[_HTTP_AUTHORIZATION].data =
+				(char *) data.iov_base;
+			connection->header[_HTTP_AUTHORIZATION].len =
+				strlen((const char *) data.iov_base);
+
 			goto next;
-		};
+		}
+
+		if (connection->header[_HTTP_COOKIE].data == NULL
+		    && strcmp((const char *) name.iov_base, HTTP_COOKIE) == 0)
+		{
+			connection->header[_HTTP_COOKIE].data =
+				(char *) data.iov_base;
+			connection->header[_HTTP_COOKIE].len =
+				strlen((const char *) data.iov_base);
+
+			goto next;
+		}
+
+		if (connection->header[_REMOTE_ADDR].data == NULL
+		    && strcmp((const char *) name.iov_base, REMOTE_ADDR) == 0)
+		{
+			connection->header[_REMOTE_ADDR].data =
+				(char *) data.iov_base;
+			connection->header[_REMOTE_ADDR].len =
+				strlen((const char *) data.iov_base);
+
+			goto next;
+		}
+
+		if (connection->header[_REQUEST_METHOD].data == NULL
+		    && strcmp((const char *) name.iov_base, REQUEST_METHOD) == 0)
+		{
+			connection->header[_REQUEST_METHOD].data =
+				(char *) data.iov_base;
+			connection->header[_REQUEST_METHOD].len =
+				strlen((const char *) data.iov_base);
+
+			goto next;
+		}
 
 next:
 		/* locate the next header */
@@ -220,26 +258,26 @@ next:
 		next = evbuffer_search(connection->head, "\0", 1, &next);
 	}
 
-	/* headers checking */
+	/* validating mandatory headers */
 	char *header = NULL;
 
-	if (connection->header[_REMOTE_ADDR].data == NULL) {
+	if (connection->header[_REQUEST_METHOD].data == NULL) {
 		header = REQUEST_METHOD;
 		goto error;
-	};
+	}
 
 	if (connection->header[_CONTENT_LENGTH].data == NULL) {
 		header = CONTENT_LENGTH;
 		goto error;
-	};
+	}
 
 	if (connection->header[_REMOTE_ADDR].data == NULL) {
 		header = REMOTE_ADDR;
 		goto error;
-	};
+	}
 
-	/* needed headers have been found */
-	connection->request_status = REQUEST_HEAD_APPROVED;
+	/* mandatory headers have been found */
+	connection->tag |= REQUEST_HEAD_APPROVED;
 
 	return;
 
@@ -247,8 +285,8 @@ error:
 	/* FIXME: throw internal server error */
 	fprintf(stderr, "%s header is missing\n", header);
 	output = bufferevent_get_output(connection->stream);
-	evbuffer_add(output, ARRAY_AND_SIZE(HTTP_HEADER_204 NEWLINE) - 1);
-	connection->request_status = REQUEST_FINISHED;
+	evbuffer_add(output, ARRAY_AND_SIZE(HTTP_HEADER_500 NEWLINE) - 1);
+	connection->tag |= REQUEST_FINISHED;
 	return;
 }
 
@@ -294,59 +332,103 @@ static void send_response(struct scgi_parser *parser)
 	struct connection_t *connection = parser->object;
 	json_object *json_msg_in = NULL;
 	json_object *json_msg_out = NULL;
-	uintptr_t msg_tag = 0;
+	json_object *jso_http, *jso_cwmp;
+	json_object *jso1, *jso2;
 	int rc;
 
-	if (connection->request_status == REQUEST_FINISHED) return;
+	/* check request status before proceeding */
+	if (connection->tag & REQUEST_FINISHED) return;
 
 	fprintf(stderr, "Starting response.\n");
 
 	struct evbuffer *output = bufferevent_get_output(connection->stream);
 
-	/* FIXME: ignore everything that is not POST method */
+	/* authorization is mandatory */
+	if (connection->header[_HTTP_AUTHORIZATION].data == NULL) {
+		evbuffer_add(output, ARRAY_AND_SIZE(HTTP_HEADER_401 NEWLINE) - 1);
+		connection->tag |= REQUEST_FINISHED;
+		return;
+	}
+
+	/* ignore everything that is not POST method */
 	if (strcmp(connection->header[_REQUEST_METHOD].data, REQUEST_METHOD_POST)) {
-		evbuffer_add(output, ARRAY_AND_SIZE(HTTP_HEADER_204 NEWLINE) - 1);
+		evbuffer_add(output, ARRAY_AND_SIZE(HTTP_HEADER_500 NEWLINE) - 1);
+		connection->tag |= REQUEST_FINISHED;
 		return;
 	}
 
 	json_msg_in = json_object_new_object();
 	if (json_msg_in == NULL) {
 		fprintf(stderr, "failed to initialize json object\n");
-		evbuffer_add(output, ARRAY_AND_SIZE(HTTP_HEADER_204 NEWLINE) - 1);
+		evbuffer_add(output, ARRAY_AND_SIZE(HTTP_HEADER_500 NEWLINE) - 1);
 		goto clean;
 	}
+
+	jso_http = json_object_new_object();
+	if (jso_http == NULL) {
+		fprintf(stderr, "failed to initialize json object\n");
+		evbuffer_add(output, ARRAY_AND_SIZE(HTTP_HEADER_500 NEWLINE) - 1);
+		goto clean;
+	}
+
+	json_object_object_add(json_msg_in, "http", jso_http);
+
+	jso_cwmp = json_object_new_object();
+	if (jso_cwmp == NULL) {
+		fprintf(stderr, "failed to initialize json object\n");
+		evbuffer_add(output, ARRAY_AND_SIZE(HTTP_HEADER_500 NEWLINE) - 1);
+		goto clean;
+	}
+
+	json_object_object_add(json_msg_in, "cwmp", jso_cwmp);
 
 	/* initialize xml parser only once */
 	lxml2_parser_init();
 
 	/* analyze received message */
 	if (atoi(connection->header[_CONTENT_LENGTH].data) != 0
-	    && xml_message_analyze(&connection->msg, &msg_tag, &json_msg_in))
+	    && xml_message_analyze(&connection->msg, &connection->tag, &jso_cwmp))
 	{
 		fprintf(stderr, "failed while analyzing xml message\n");
-		evbuffer_add(output, ARRAY_AND_SIZE(HTTP_HEADER_204 NEWLINE) - 1);
+		evbuffer_add(output, ARRAY_AND_SIZE(HTTP_HEADER_500 NEWLINE) - 1);
 		goto clean;
 	}
 
-	json_object *remote_addr;
-	remote_addr = json_object_new_string(connection->header[_REMOTE_ADDR].data);
-	json_object_object_add(json_msg_in, "remote_addr", remote_addr);
+	/* add http headers to the json object */
+	if (connection->header[_HTTP_COOKIE].data) {
+		jso1 = json_object_new_string(connection->header[_HTTP_COOKIE].data);
+		json_object_object_add(jso_http, "cookie", jso1);
+	}
 
-	if (msg_tag & XML_CWMP_TYPE_INFORM) {
-		u_char *c;
+	if (connection->header[_HTTP_AUTHORIZATION].data) {
+		jso1 = json_object_new_string(connection->header[_HTTP_AUTHORIZATION].data);
+		json_object_object_add(jso_http, "authorization", jso1);
+	}
 
-		c = (u_char *) json_object_to_json_string(json_msg_in);
-		cwmp_str_t msg = {
-			.data = c,
-			.len = strlen(c)
-		};
+	if (connection->header[_REMOTE_ADDR].data) {
+		jso1 = json_object_new_string(connection->header[_REMOTE_ADDR].data);
+		json_object_object_add(jso_http, "remote_addr", jso1);
+	}
 
-		rc = amqp_notify(&msg);
-		if (rc != 0) {
-			fprintf(stderr, "failed to send AMQP notification\n");
-		}
+
+	/* send request to processing */
+	u_char *c = (u_char *) json_object_to_json_string_ext(json_msg_in, JSON_C_TO_STRING_PLAIN);
+
+	cwmp_str_t msg = {
+		.data	= c,
+		.len	= strlen(c)
+	};
+
+	rc = amqp_notify(&msg);
+	if (rc != 0) {
+		fprintf(stderr, "failed to send AMQP notification\n");
+	}
+
+	if (connection->tag & XML_CWMP_TYPE_INFORM) {
 
 		evbuffer_add(output, ARRAY_AND_SIZE(HTTP_HEADER_200_CONTENT_XML) - 1);
+		evbuffer_add(output, ARRAY_AND_SIZE(HTTP_HEADER_SET_COOKIE_PREFIX "level=0\n") - 1);
+		evbuffer_add(output, ARRAY_AND_SIZE(NEWLINE) - 1);
 		evbuffer_add(output, ARRAY_AND_SIZE(XML_CWMP_GENERIC_HEAD) - 1);
 		evbuffer_add(output, ARRAY_AND_SIZE(XML_CWMP_INFORM_RESPONSE) - 1);
 		evbuffer_add(output, ARRAY_AND_SIZE(XML_CWMP_GENERIC_TAIL) - 1);
@@ -354,8 +436,23 @@ static void send_response(struct scgi_parser *parser)
 		goto clean;
 	}
 
+	/* backend has been notified, give it some time for provisioning */
+	/* FIXME: read default HTTP_AUTHORIZATION headers from config file */
+	if (connection->header[_HTTP_COOKIE].data
+	    && strcmp(connection->header[_HTTP_COOKIE].data, "level=0") == 0
+	    && connection->header[_HTTP_AUTHORIZATION].data
+	    && strcmp(connection->header[_HTTP_AUTHORIZATION].data, "Basic ZnJlZWN3bXA6ZnJlZWN3bXA=") == 0)
+	{
+		evbuffer_add(output, ARRAY_AND_SIZE(HTTP_HEADER_200_CONTENT_XML) - 1);
+		evbuffer_add(output, ARRAY_AND_SIZE(HTTP_HEADER_SET_COOKIE_PREFIX "level=1\n") - 1);
+		evbuffer_add(output, ARRAY_AND_SIZE(NEWLINE) - 1);
+		evbuffer_add(output, ARRAY_AND_SIZE(XML_CWMP_GENERIC_PERIODIC NEWLINE) - 1);
+		connection->tag |= REQUEST_FINISHED;
+		goto clean;
+	}
+
 	if (atoi(connection->header[_CONTENT_LENGTH].data) == 0
-	    || msg_tag & XML_CWMP_TYPE_SET_PARAM_RES)
+	    || connection->tag & XML_CWMP_TYPE_SET_PARAM_RES)
 	{
 		cwmp_str_t queue = {
 			.data	= amqp_queue.provisioning.data,
@@ -376,7 +473,7 @@ static void send_response(struct scgi_parser *parser)
 		rc = amqp_fetch_pending(&queue, &msg);
 		if (rc != 0) {
 			fprintf(stderr, "failed to fetch AMQP action\n");
-			evbuffer_add(output, ARRAY_AND_SIZE(HTTP_HEADER_204 NEWLINE) - 1);
+			evbuffer_add(output, ARRAY_AND_SIZE(HTTP_HEADER_500 NEWLINE) - 1);
 			goto clean;
 		}
 
@@ -393,19 +490,37 @@ static void send_response(struct scgi_parser *parser)
 
 		if (json_msg_out == NULL) {
 			fprintf(stderr, "failed to parse json data\n");
-			evbuffer_add(output, ARRAY_AND_SIZE(HTTP_HEADER_204 NEWLINE) - 1);
+			evbuffer_add(output, ARRAY_AND_SIZE(HTTP_HEADER_500 NEWLINE) - 1);
 			goto clean;
 		}
 
 		rc = xml_message_create(&msg, json_msg_out);
-		if (rc == 0) {
-			evbuffer_add(output, ARRAY_AND_SIZE(HTTP_HEADER_200_CONTENT_XML) - 1);
-			/* FIXME: ugly hack to remove xml node from the xml message */
-			int trim = strlen(XML_PROLOG) - 1;
-			evbuffer_add(output, msg.data + trim, msg.len - trim);
-		} else {
-			evbuffer_add(output, ARRAY_AND_SIZE(HTTP_HEADER_204 NEWLINE) - 1);
+		if (rc != 0) {
+			fprintf(stderr, "failed to construct xml message\n");
+			evbuffer_add(output, ARRAY_AND_SIZE(HTTP_HEADER_500 NEWLINE) - 1);
+			goto clean;
 		}
+
+		evbuffer_add(output, ARRAY_AND_SIZE(HTTP_HEADER_200_CONTENT_XML) - 1);
+
+		(void) json_object_object_get_ex(json_msg_out, "http", &jso1);
+
+		if (jso1
+		    && json_object_object_get_ex(jso1, "cookie", &jso2))
+		{
+			evbuffer_add(output, ARRAY_AND_SIZE(HTTP_HEADER_SET_COOKIE_PREFIX) - 1);
+			evbuffer_add(output,
+				     json_object_get_string(jso2),
+				     json_object_get_string_len(jso2));
+			evbuffer_add(output, ARRAY_AND_SIZE(NEWLINE) - 1);
+		}
+
+		/* headers were sent, add one extra newline */
+		evbuffer_add(output, ARRAY_AND_SIZE(NEWLINE) - 1);
+
+		/* FIXME: ugly hack to remove xml node from the xml message */
+		int trim = strlen(XML_PROLOG) - 1;
+		evbuffer_add(output, msg.data + trim, msg.len - trim);
 
 		free(msg.data);
 		msg.data = NULL;
@@ -417,10 +532,16 @@ static void send_response(struct scgi_parser *parser)
 	evbuffer_add(output, ARRAY_AND_SIZE(HTTP_HEADER_204 NEWLINE) - 1);
 
 clean:
-	if (json_msg_in) json_object_put(json_msg_in);
+	if (json_msg_in) {
+		json_object_put(json_msg_in);
+		jso_http = NULL;
+		jso_cwmp = NULL;
+	}
 	if (json_msg_out) json_object_put(json_msg_out);
+	if (jso_http) json_object_put(jso_http);
+	if (jso_cwmp) json_object_put(jso_cwmp);
 	lxml2_parser_cleanup();
-	connection->request_status = REQUEST_FINISHED;
+	connection->tag |= REQUEST_FINISHED;
 }
 
 static void read_cb(struct bufferevent *stream, void *context)
@@ -459,7 +580,7 @@ static void read_cb(struct bufferevent *stream, void *context)
 
 	int content_length = -1;
 
-	if (connection->request_status == REQUEST_HEAD_APPROVED) {
+	if (connection->tag & REQUEST_HEAD_APPROVED) {
 		content_length = atoi(connection->header[_CONTENT_LENGTH].data);
 	}
 
@@ -483,10 +604,7 @@ static void write_cb(struct bufferevent *stream, void *context)
 	struct evbuffer *output = bufferevent_get_output(stream);
 	struct evbuffer *input  = bufferevent_get_input(stream);
 
-	if (connection->request_status < REQUEST_HEAD_APPROVED)
-		return;
-
-	if (connection->request_status == REQUEST_FINISHED
+	if (connection->tag & REQUEST_FINISHED
 	    && evbuffer_get_length(output) == 0
 	    && evbuffer_get_length(input) == 0)
 	{

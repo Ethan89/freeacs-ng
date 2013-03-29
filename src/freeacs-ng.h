@@ -23,31 +23,79 @@
 #define HTTP_HEADER_204 \
 	"Status: 204 No Content" NEWLINE
 
+#define HTTP_HEADER_401 \
+	"Status: 401 Unauthorized" NEWLINE \
+	"WWW-Authenticate: Basic realm=\"freeacs-ng\"" NEWLINE
+
+#define HTTP_HEADER_500 \
+	"Status: 500 Internal Server Error" NEWLINE
+
 #define HTTP_HEADER_CONTENT_XML \
 	"Content-Type: text/xml" NEWLINE
 
+#define HTTP_HEADER_SET_COOKIE_PREFIX \
+	"Set-Cookie: "
+
 #define HTTP_HEADER_200_CONTENT_XML \
 	HTTP_HEADER_200 \
-	HTTP_HEADER_CONTENT_XML \
-	NEWLINE
+	HTTP_HEADER_CONTENT_XML
 
+#define XML_CWMP_INITIAL_PROVISIONING \
+	XML_CWMP_GENERIC_HEAD \
+	"<cwmp:SetParameterValues>" \
+	  "<ParameterList soap_enc:arrayType=\"cwmp:ParameterValueStruct[4]\">" \
+	    "<ParameterValueStruct>" \
+	      "<Name>InternetGatewayDevice.ManagementServer.Username</Name>" \
+	      "<Value>freeacs-ng</Value>" \
+	    "</ParameterValueStruct>" \
+	    "<ParameterValueStruct>" \
+	      "<Name>InternetGatewayDevice.ManagementServer.Password</Name>" \
+	      "<Value>freeacs-ng</Value>" \
+	    "</ParameterValueStruct>" \
+	    "<ParameterValueStruct>" \
+	      "<Name>InternetGatewayDevice.ManagementServer.PeriodicInformEnable</Name>" \
+	      "<Value>1</Value>" \
+	    "</ParameterValueStruct>" \
+	    "<ParameterValueStruct>" \
+	      "<Name>InternetGatewayDevice.ManagementServer.PeriodicInformInterval</Name>" \
+	      "<Value>3</Value>" \
+	    "</ParameterValueStruct>" \
+	  "</ParameterList>" \
+	  "<ParameterKey />" \
+	"</cwmp:SetParameterValues>" \
+	XML_CWMP_GENERIC_TAIL
+
+
+#define CONTENT_LENGTH		"CONTENT_LENGTH"
+#define HTTP_AUTHORIZATION	"HTTP_AUTHORIZATION"
+#define HTTP_COOKIE		"HTTP_COOKIE"
 #define REQUEST_METHOD		"REQUEST_METHOD"
 #define REQUEST_METHOD_POST	"POST"
-#define CONTENT_LENGTH		"CONTENT_LENGTH"
 #define REMOTE_ADDR		"REMOTE_ADDR"
 
 enum {
-	_REQUEST_METHOD,
 	_CONTENT_LENGTH,
+	_HTTP_AUTHORIZATION,
+	_HTTP_COOKIE,
 	_REMOTE_ADDR,
+	_REQUEST_METHOD,
 	__HEADER_MAX
 };
 
-enum {
-	REQUEST_RECEIVED,
-	REQUEST_HEAD_APPROVED,
-	REQUEST_FINISHED
-};
+#define TAG_EMPTY			0x000
+
+#define REQUEST_RECEIVED		0x001
+#define REQUEST_HEAD_APPROVED		0x002
+#define REQUEST_FINISHED		0x004
+
+#define XML_CWMP_NONE			0x010
+#define XML_CWMP_VERSION_1_0		0x020
+#define XML_CWMP_VERSION_1_1		0x040
+#define XML_CWMP_VERSION_1_2		0x080
+#define XML_CWMP_TYPE_UNKNOWN		0x100
+#define XML_CWMP_TYPE_INFORM		0x200
+#define XML_CWMP_TYPE_SET_PARAM_RES	0x400
+
 
 /* bookkeeping for each connection */
 struct connection_t
@@ -65,11 +113,11 @@ struct connection_t
 	/* request headers */
 	cwmp_str_t header[__HEADER_MAX];
 
-	/* request status */
-	uintptr_t request_status;
-
 	/* received message */
 	cwmp_str_t msg;
+
+	/* request tag */
+	uintptr_t tag;
 };
 
 /* SCGI callback functions */

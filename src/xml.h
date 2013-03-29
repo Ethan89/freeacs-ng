@@ -47,15 +47,6 @@ typedef xmlNs lxml2_ns;
 #define lxml2_new_ns(a, b ,c) (xmlNewNs(a, b, c));
 #define lxml2_set_prop(a, b ,c) (xmlSetProp(a, b, c));
 
-#define XML_CWMP_NONE	    		0x00
-#define XML_CWMP_VERSION_1_0		0x01
-#define XML_CWMP_VERSION_1_1		0x02
-#define XML_CWMP_VERSION_1_2		0x04
-#define XML_CWMP_TYPE_UNKNOWN		0x08
-#define XML_CWMP_TYPE_INFORM		0x10
-#define XML_CWMP_TYPE_SET_PARAM_RES	0x20
-
-
 int xml_message_analyze(cwmp_str_t *, uintptr_t *, json_object **);
 int xml_message_create(cwmp_str_t *, json_object *);
 
