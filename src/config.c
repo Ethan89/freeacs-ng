@@ -55,7 +55,7 @@ static int config_init_scgi()
 
 	uci_foreach_element(&s->options, e1) {
 		if (!strcmp((uci_to_option(e1))->e.name, "address")) {
-			fprintf(stderr, "freeacs-ng.@scgi[0].address=%s\n", uci_to_option(e1)->v.string);
+			fprintf(stderr, "freeacs-ng.@scgi[0].address='%s'\n", uci_to_option(e1)->v.string);
 			scgi.host.sin_addr.s_addr = inet_addr(uci_to_option(e1)->v.string);
 			counter_address++;
 		}
@@ -65,7 +65,7 @@ static int config_init_scgi()
 				fprintf(stderr, "in section scgi port has invalid value...\n");
 				return -1;
 			}
-			fprintf(stderr, "freeacs-ng.@scgi[0].port=%s\n", uci_to_option(e1)->v.string);
+			fprintf(stderr, "freeacs-ng.@scgi[0].port='%s'\n", uci_to_option(e1)->v.string);
 			scgi.host.sin_port = htons(atoi(uci_to_option(e1)->v.string));
 			counter_port++;
 		}
@@ -115,7 +115,7 @@ static int config_init_amqp()
 
 	uci_foreach_element(&s->options, e1) {
 		if (!strcmp((uci_to_option(e1))->e.name, "host")) {
-			fprintf(stderr, "freeacs-ng.@amqp[0].host=%s\n", uci_to_option(e1)->v.string);
+			fprintf(stderr, "freeacs-ng.@amqp[0].host='%s'\n", uci_to_option(e1)->v.string);
 			amqp.host = strdup(uci_to_option(e1)->v.string);
 		}
 
@@ -124,22 +124,22 @@ static int config_init_amqp()
 				fprintf(stderr, "in section amqp port has invalid value...\n");
 				goto error;
 			}
-			fprintf(stderr, "freeacs-ng.@amqp[0].port=%s\n", uci_to_option(e1)->v.string);
+			fprintf(stderr, "freeacs-ng.@amqp[0].port='%s'\n", uci_to_option(e1)->v.string);
 			amqp.port = atoi(uci_to_option(e1)->v.string);
 		}
 
 		if (!strcmp((uci_to_option(e1))->e.name, "user")) {
-			fprintf(stderr, "freeacs-ng.@amqp[0].user=%s\n", uci_to_option(e1)->v.string);
+			fprintf(stderr, "freeacs-ng.@amqp[0].user='%s'\n", uci_to_option(e1)->v.string);
 			amqp.user = strdup(uci_to_option(e1)->v.string);
 		}
 
 		if (!strcmp((uci_to_option(e1))->e.name, "pass")) {
-			fprintf(stderr, "freeacs-ng.@amqp[0].pass=%s\n", uci_to_option(e1)->v.string);
+			fprintf(stderr, "freeacs-ng.@amqp[0].pass='%s'\n", uci_to_option(e1)->v.string);
 			amqp.pass = strdup(uci_to_option(e1)->v.string);
 		}
 
 		if (!strcmp((uci_to_option(e1))->e.name, "virtual_host")) {
-			fprintf(stderr, "freeacs-ng.@amqp[0].virtual_host=%s\n", uci_to_option(e1)->v.string);
+			fprintf(stderr, "freeacs-ng.@amqp[0].virtual_host='%s'\n", uci_to_option(e1)->v.string);
 			amqp.virtual_host = strdup(uci_to_option(e1)->v.string);
 		}
 	}
@@ -209,7 +209,7 @@ static int config_init_amqp_exchange()
 
 	uci_foreach_element(&s->options, e1) {
 		if (!strcmp((uci_to_option(e1))->e.name, "broadcast")) {
-			fprintf(stderr, "freeacs-ng.@amqp_exchange[0].broadcast=%s\n", uci_to_option(e1)->v.string);
+			fprintf(stderr, "freeacs-ng.@amqp_exchange[0].broadcast='%s'\n", uci_to_option(e1)->v.string);
 
 			amqp_exchange.broadcast.len = strlen(uci_to_option(e1)->v.string);
 
@@ -225,7 +225,7 @@ static int config_init_amqp_exchange()
 		}
 
 		if (!strcmp((uci_to_option(e1))->e.name, "provisioning")) {
-			fprintf(stderr, "freeacs-ng.@amqp_exchange[0].provisioning=%s\n", uci_to_option(e1)->v.string);
+			fprintf(stderr, "freeacs-ng.@amqp_exchange[0].provisioning='%s'\n", uci_to_option(e1)->v.string);
 
 			amqp_exchange.provisioning.len = strlen(uci_to_option(e1)->v.string);
 
@@ -282,7 +282,7 @@ static int config_init_amqp_queue()
 
 	uci_foreach_element(&s->options, e1) {
 		if (!strcmp((uci_to_option(e1))->e.name, "provisioning")) {
-			fprintf(stderr, "freeacs-ng.@amqp_queue[0].provisioning=%s\n", uci_to_option(e1)->v.string);
+			fprintf(stderr, "freeacs-ng.@amqp_queue[0].provisioning='%s'\n", uci_to_option(e1)->v.string);
 
 			amqp_queue.provisioning.len = strlen(uci_to_option(e1)->v.string);
 
