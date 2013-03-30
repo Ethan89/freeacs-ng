@@ -19,3 +19,6 @@ config amqp_exchange
 
 config amqp_queue
 	option provisioning '@remote_addr'
+
+config authorization
+	list factory 'Basic ZnJlZWN3bXA6ZnJlZWN3bXA='

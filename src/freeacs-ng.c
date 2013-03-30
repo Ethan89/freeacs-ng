@@ -436,17 +436,27 @@ static void send_response(struct scgi_parser *parser)
 		goto clean;
 	}
 
+	bool default_credentials = false;
+	LIST_FOREACH(auth, &auth_head, entries) {
+		if (connection->header[_HTTP_AUTHORIZATION].len != auth->factory.len) {
+			continue;
+		}
+
+		if (strcmp(connection->header[_HTTP_AUTHORIZATION].data, auth->factory.data) == 0) {
+			default_credentials = true;
+			break;
+		}
+	}
+
 	/* backend has been notified, give it some time for provisioning */
-	/* FIXME: read default HTTP_AUTHORIZATION headers from config file */
 	if (connection->header[_HTTP_COOKIE].data
 	    && strcmp(connection->header[_HTTP_COOKIE].data, "level=0") == 0
-	    && connection->header[_HTTP_AUTHORIZATION].data
-	    && strcmp(connection->header[_HTTP_AUTHORIZATION].data, "Basic ZnJlZWN3bXA6ZnJlZWN3bXA=") == 0)
+	    && default_credentials)
 	{
 		evbuffer_add(output, ARRAY_AND_SIZE(HTTP_HEADER_200_CONTENT_XML) - 1);
 		evbuffer_add(output, ARRAY_AND_SIZE(HTTP_HEADER_SET_COOKIE_PREFIX "level=1\n") - 1);
 		evbuffer_add(output, ARRAY_AND_SIZE(NEWLINE) - 1);
-		evbuffer_add(output, ARRAY_AND_SIZE(XML_CWMP_GENERIC_PERIODIC NEWLINE) - 1);
+		evbuffer_add(output, ARRAY_AND_SIZE(XML_CWMP_INITIAL_PROVISIONING NEWLINE) - 1);
 		connection->tag |= REQUEST_FINISHED;
 		goto clean;
 	}

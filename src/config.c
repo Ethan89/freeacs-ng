@@ -11,6 +11,7 @@
 #include <string.h>
 
 #include <arpa/inet.h>
+#include <sys/queue.h>
 
 #include <uci.h>
 
@@ -303,6 +304,54 @@ static int config_init_amqp_queue()
 		return -1;
 	}
 
+	return 0;
+}
+
+static int config_init_authorization()
+{
+	struct uci_section *s;
+	struct uci_element *e1, *e2;
+	struct uci_option *o;
+	int counter_section = 0;
+
+	uci_foreach_element(&uci_freeacs_ng->sections, e1) {
+		s = uci_to_section(e1);
+		if (strcmp(s->type, "authorization") == 0) {
+			counter_section++;
+			break;
+		}
+	}
+
+	if (counter_section == 0) {
+		fprintf(stderr, "uci section authorization not found...\n");
+		return -1;
+	} else if (counter_section > 1) {
+		fprintf(stderr, "only one uci authorization section is allowed...\n");
+		return -1;
+	}
+
+	/* only one amqp_queue section was found */
+
+	LIST_INIT(&auth_head);
+
+	uci_foreach_element(&s->options, e1) {
+		o = uci_to_option(e1);
+
+		uci_foreach_element(&o->v.list,e2) {
+			auth = (struct authorization_t *) calloc(1, sizeof(struct authorization_t));
+
+			if (auth == NULL) {
+				fprintf(stderr, "failed to allocate memory in configuration\n");
+				return -1;
+			}
+
+			auth->factory.data = e2->name;
+			auth->factory.len = strlen(e2->name);
+			LIST_INSERT_HEAD(&auth_head, auth, entries);
+
+			fprintf(stderr, "freeacs-ng.@authorization[*].factory='%s'\n", auth->factory.data);
+		}
+	}
 
 	return 0;
 }
@@ -347,6 +396,11 @@ void config_exit(void)
 	free(amqp_exchange.broadcast.data);
 	free(amqp_exchange.provisioning.data);
 	free(amqp_queue.provisioning.data);
+
+	while (NULL != (auth = LIST_FIRST(&auth_head))) {
+		LIST_REMOVE(auth, entries);
+		free(auth);
+	}
 }
 
 void config_load(void)
@@ -358,6 +412,7 @@ void config_load(void)
 	if (config_init_amqp()) goto error;
 	if (config_init_amqp_exchange()) goto error;
 	if (config_init_amqp_queue()) goto error;
+	if (config_init_authorization()) goto error;
 
 	return;
 

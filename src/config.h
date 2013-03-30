@@ -11,6 +11,7 @@
 #define _FREEACS_NG_CONFIG_H__
 
 #include <arpa/inet.h>
+#include <sys/queue.h>
 
 #include <libfreecwmp.h>
 
@@ -37,6 +38,13 @@ struct amqp_exchange_t {
 struct amqp_queue_t {
 	cwmp_str_t provisioning;
 };
+
+LIST_HEAD(authorization_head, authorization_t) auth_head;
+ 
+struct authorization_t {
+	cwmp_str_t factory;
+	LIST_ENTRY(authorization_t) entries;
+} *auth;
 
 extern struct scgi_t scgi;
 extern struct amqp_t amqp;
