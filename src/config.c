@@ -402,7 +402,22 @@ void config_exit(void)
 
 void config_load(const char *c)
 {
-	uci_freeacs_ng = config_init_package(c, "freeacs-ng");
+	uci_freeacs_ng = NULL;
+
+	char *f = strrchr(c, '/');
+
+	if (f != NULL) {
+		char *d = calloc(1, ((f - c) + 1) * sizeof(char));;
+		if (d == NULL) goto error;
+		memcpy(d, c, (f - c));
+		uci_freeacs_ng = config_init_package(d, f + sizeof(char));
+		free(d);
+	}
+	
+	if (f == NULL) {
+		uci_freeacs_ng = config_init_package("./", c);
+	}
+
 	if (!uci_freeacs_ng) goto error;
 
 	if (config_init_scgi()) goto error;
