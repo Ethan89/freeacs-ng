@@ -16,7 +16,7 @@
 #include <libfreecwmp.h>
 
 void config_exit(void);
-void config_load(void);
+void config_load(const char *);
 
 struct scgi_t {
 	struct sockaddr_in host;

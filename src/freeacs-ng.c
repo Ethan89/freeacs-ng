@@ -8,6 +8,7 @@
  */
 
 #include <errno.h>
+#include <getopt.h>
 #include <stdbool.h>
 #include <stdlib.h>
 #include <string.h>
@@ -684,7 +685,33 @@ static void accept_error_cb(struct evconnlistener *listener, void *context)
 
 int main(int argc, char **argv)
 {
-	config_load();
+	bool has_config = false;
+
+	struct option long_opts[] = {
+		{"config", required_argument, NULL, 'c'},
+		{NULL, 0, NULL, 0}
+	};
+
+	int c;
+	while (1) {
+		c = getopt_long(argc, argv, "c:", long_opts, NULL);
+		if (c == EOF)
+			break;
+		switch (c) {
+			case 'c':
+				has_config = true;
+				config_load(optarg);
+				break;
+			default:
+				fprintf(stderr, "reading flags failed\n");
+				return EXIT_FAILURE;
+		}
+	}
+
+	if (has_config == false) {
+		fprintf(stderr, "uci directory configuration flag is missing\n");
+		return EXIT_FAILURE;
+	}
 
 	base = event_base_new();
 	if (!base) {

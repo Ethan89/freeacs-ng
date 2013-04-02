@@ -357,7 +357,7 @@ static int config_init_authorization()
 }
 
 static struct uci_package *
-config_init_package(const char *c)
+config_init_package(const char *c, const char *f)
 {
 	struct uci_context *ctx = uci_ctx;
 	struct uci_package *p = NULL;
@@ -367,17 +367,14 @@ config_init_package(const char *c)
 		if (!ctx) return NULL;
 		uci_ctx = ctx;
 
-#ifdef DUMMY_MODE
-		uci_set_confdir(ctx, "./config");
-		uci_set_savedir(ctx, "./config/tmp");
-#endif
+		uci_set_confdir(ctx, c);
 	} else {
-		p = uci_lookup_package(ctx, c);
+		p = uci_lookup_package(ctx, f);
 		if (p)
 			uci_unload(ctx, p);
 	}
 
-	if (uci_load(ctx, c, &p)) {
+	if (uci_load(ctx, f, &p)) {
 		uci_free_context(ctx);
 		return NULL;
 	}
@@ -403,9 +400,9 @@ void config_exit(void)
 	}
 }
 
-void config_load(void)
+void config_load(const char *c)
 {
-	uci_freeacs_ng = config_init_package("freeacs-ng");
+	uci_freeacs_ng = config_init_package(c, "freeacs-ng");
 	if (!uci_freeacs_ng) goto error;
 
 	if (config_init_scgi()) goto error;
