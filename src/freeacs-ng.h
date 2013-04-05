@@ -95,6 +95,7 @@ enum {
 #define XML_CWMP_TYPE_UNKNOWN		0x100
 #define XML_CWMP_TYPE_INFORM		0x200
 #define XML_CWMP_TYPE_SET_PARAM_RES	0x400
+#define XML_CWMP_TYPE_ADD_OBJECT_RES	0x800
 
 
 /* bookkeeping for each connection */

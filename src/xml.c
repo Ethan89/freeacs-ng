@@ -170,6 +170,54 @@ int xml_message_analyze(cwmp_str_t *msg, uintptr_t *tag, json_object **json_obj)
 	}
 	lxml2_xpath_free_obj(xpath_obj);
 
+	/* CWMP-1-0 add object response message */
+	xpath_expr = "/soap_env:Envelope/soap_env:Body/cwmp_1_0:AddObjectResponse";
+	xpath_obj = lxml2_xpath_eval_expr(xpath_expr, xpath_ctx);
+	if (xpath_obj == NULL) {
+		fprintf(stderr, "could not create xpath object\n");
+		goto error;
+	}
+
+	for(int i = 0; i < ((xpath_obj->nodesetval) ? xpath_obj->nodesetval->nodeNr : 0); ++i) {
+		if(xpath_obj->nodesetval->nodeTab[i]->type == XML_ELEMENT_NODE) {
+			*tag |= XML_CWMP_VERSION_1_0;
+			*tag |= XML_CWMP_TYPE_ADD_OBJECT_RES;
+		}
+	}
+	lxml2_xpath_free_obj(xpath_obj);
+
+	/* CWMP-1-1 add object response message */
+	xpath_expr = "/soap_env:Envelope/soap_env:Body/cwmp_1_1:AddObjectResponse";
+	xpath_obj = lxml2_xpath_eval_expr(xpath_expr, xpath_ctx);
+	if (xpath_obj == NULL) {
+		fprintf(stderr, "could not create xpath object\n");
+		goto error;
+	}
+
+	for(int i = 0; i < ((xpath_obj->nodesetval) ? xpath_obj->nodesetval->nodeNr : 0); ++i) {
+		if(xpath_obj->nodesetval->nodeTab[i]->type == XML_ELEMENT_NODE) {
+			*tag |= XML_CWMP_VERSION_1_1;
+			*tag |= XML_CWMP_TYPE_ADD_OBJECT_RES;
+		}
+	}
+	lxml2_xpath_free_obj(xpath_obj);
+
+	/* CWMP-1-2 add object response message */
+	xpath_expr = "/soap_env:Envelope/soap_env:Body/cwmp_1_2:AddObjectResponse";
+	xpath_obj = lxml2_xpath_eval_expr(xpath_expr, xpath_ctx);
+	if (xpath_obj == NULL) {
+		fprintf(stderr, "could not create xpath object\n");
+		goto error;
+	}
+
+	for(int i = 0; i < ((xpath_obj->nodesetval) ? xpath_obj->nodesetval->nodeNr : 0); ++i) {
+		if(xpath_obj->nodesetval->nodeTab[i]->type == XML_ELEMENT_NODE) {
+			*tag |= XML_CWMP_VERSION_1_2;
+			*tag |= XML_CWMP_TYPE_ADD_OBJECT_RES;
+		}
+	}
+	lxml2_xpath_free_obj(xpath_obj);
+
 	if (*tag & XML_CWMP_VERSION_1_0) xpath_expr = "//cwmp_1_0:ID";
 	if (*tag & XML_CWMP_VERSION_1_1) xpath_expr = "//cwmp_1_1:ID";
 	if (*tag & XML_CWMP_VERSION_1_2) xpath_expr = "//cwmp_1_2:ID";
@@ -275,6 +323,46 @@ int xml_message_analyze(cwmp_str_t *msg, uintptr_t *tag, json_object **json_obj)
 		free(value);
 	}
 
+	if (*tag & XML_CWMP_TYPE_ADD_OBJECT_RES) {
+		xpath_expr = "//InstanceNumber";
+
+		xpath_obj = lxml2_xpath_eval_expr(xpath_expr, xpath_ctx);
+		if (xpath_obj == NULL) {
+			fprintf(stderr, "could not create xpath object\n");
+			goto error;
+		}
+
+		u_char *c;
+		for(int i = 0; i < ((xpath_obj->nodesetval) ? xpath_obj->nodesetval->nodeNr : 0); ++i) {
+			if(xpath_obj->nodesetval->nodeTab[i]->type == XML_ELEMENT_NODE) {
+				c = lxml2_node_get_content(xpath_obj->nodesetval->nodeTab[i]);
+			}
+		}
+		lxml2_xpath_free_obj(xpath_obj);
+
+		json_object_object_add(*json_obj, "type", json_object_new_string("add_object_response"));
+		if (c) json_object_object_add(*json_obj, "instance_number", json_object_new_string(c));
+		free(c);
+
+		xpath_expr = "//Status";
+
+		xpath_obj = lxml2_xpath_eval_expr(xpath_expr, xpath_ctx);
+		if (xpath_obj == NULL) {
+			fprintf(stderr, "could not create xpath object\n");
+			goto error;
+		}
+
+		for(int i = 0; i < ((xpath_obj->nodesetval) ? xpath_obj->nodesetval->nodeNr : 0); ++i) {
+			if(xpath_obj->nodesetval->nodeTab[i]->type == XML_ELEMENT_NODE) {
+				c = lxml2_node_get_content(xpath_obj->nodesetval->nodeTab[i]);
+			}
+		}
+		lxml2_xpath_free_obj(xpath_obj);
+
+		json_object_object_add(*json_obj, "type", json_object_new_string("add_object_response"));
+		if (c) json_object_object_add(*json_obj, "status", json_object_new_string(c));
+		free(c);
+	}
 	lxml2_xpath_free_ctx(xpath_ctx);
 	lxml2_doc_free(doc);
 
