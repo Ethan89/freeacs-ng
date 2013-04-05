@@ -428,6 +428,38 @@ int xml_message_create(cwmp_str_t *msg, json_object *json_obj)
 		goto done;
 	}
 
+	if (json_object_object_get(json_cwmp_obj, "add_object") != NULL) {
+		json_object *j = json_object_object_get(json_cwmp_obj, "add_object");
+
+		xpath_expr = "/soap_env:Envelope/soap_env:Body";
+		xpath_obj = lxml2_xpath_eval_expr(xpath_expr, xpath_ctx);
+		if (xpath_obj == NULL) {
+			fprintf(stderr, "could not evaluate xpath expression\n");
+			goto error;
+		}
+
+		lxml2_node *node_object, *n;
+		for(int i = 0; i < ((xpath_obj->nodesetval) ? xpath_obj->nodesetval->nodeNr : 0); ++i) {
+			if(xpath_obj->nodesetval->nodeTab[i]->type == XML_ELEMENT_NODE) {
+				n = lxml2_new_child(xpath_obj->nodesetval->nodeTab[i],
+						    ns_cwmp,
+						    (u_char *) "AddObject", NULL);
+				if (!n) goto error;
+
+				node_object = lxml2_new_child(n, NULL, (u_char *) "ObjectName", json_object_get_string(j));
+				if (!node_object) goto error;
+				node_object->ns = NULL;
+
+				n = lxml2_new_child(n, NULL, (u_char *) "ParameterKey", NULL);
+				if (!n) goto error;
+				n->ns = NULL;
+			}
+		}
+		lxml2_xpath_free_obj(xpath_obj);
+
+		goto done;
+	}
+
 	if (json_object_object_get(json_cwmp_obj, "download") != NULL) {
 		json_object *j = json_object_object_get(json_cwmp_obj, "download");
 
