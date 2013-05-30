@@ -147,6 +147,9 @@ class Provisioning(object):
 		sys.exit(1)
 
 	def connection_close(self):
+		if not self._connection:
+			return
+
 		self.LOG.info('closing connection')
 		self._connection.close()
 
@@ -182,6 +185,9 @@ class Provisioning(object):
 		self.setup_exchange([ self.publisher ])
 
 	def channel_close(self):
+		if not self._channel:
+			return
+
 		self.LOG.info('closing channel')
 		self._channel.close()
 
@@ -317,6 +323,9 @@ class Provisioning(object):
 						    self.consumer["internal"]["queue"]["name"])
 
 	def stop_consuming(self):
+		if not self._consumer_tag:
+			return
+
 		self.LOG.info('stopping consuming')
 		self._channel.basic_cancel(self.on_cancel_ok, self._consumer_tag)
 
