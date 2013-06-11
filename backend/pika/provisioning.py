@@ -405,6 +405,37 @@ class Provisioning(object):
 				self.LOG.error('failed to fetch cwmp type')
 				return
 
+		if self.input_verification["cwmp"]["type"]["add_object_response"] == True:
+			try:
+				message_type = data["cwmp"]["type"]
+				if not message_type == "add_object_response":
+					LOG.info('ignoring non add_object_response message')
+					return
+			except:
+				self.LOG.error('failed to fetch cwmp type')
+				return
+
+		if self.input_verification["cwmp"]["id"] == True:
+			try:
+				data["cwmp"]["id"]
+			except:
+				self.LOG.error('failed to fetch cwmp id"')
+				return
+
+		if self.input_verification["cwmp"]["instance_number"] == True:
+			try:
+				data["cwmp"]["instance_number"]
+			except:
+				self.LOG.error('failed to fetch cwmp instance_number"')
+				return
+
+		if self.input_verification["cwmp"]["status"] == True:
+			try:
+				data["cwmp"]["status"]
+			except:
+				self.LOG.error('failed to fetch cwmp status"')
+				return
+
 		if self.input_verification["cwmp"]["events"]["bootstrap"] == True:
 			try:
 				events = data["cwmp"]["events"]
