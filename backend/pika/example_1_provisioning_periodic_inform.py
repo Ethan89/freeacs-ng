@@ -8,8 +8,10 @@
 # Copyright (C) 2013 Luka Perkov <freeacs-ng@lukaperkov.net>
 #
 
+# core
 import random
 
+# backend
 from provisioning import *
 
 class TimeProvisioning(Provisioning):
@@ -29,7 +31,6 @@ class TimeProvisioning(Provisioning):
 
 		archive.append(self.consumer["internal"]["queue"]["name"])
 		internal_msg["archive"] = archive
-
 
 		if not (data["http"]["username"] == "freecwmp" and data["http"]["password"] == "freecwmp"):
 			self.LOG.info('device already provisioned, ignoring message')
@@ -61,58 +62,58 @@ class TimeProvisioning(Provisioning):
 
 
 def main():
-	time_provisioning = TimeProvisioning()
+	provisioning = TimeProvisioning()
 
-	time_provisioning.config["amqp"]["host"] = "127.0.0.1"
-	time_provisioning.config["amqp"]["virtual_host"] = "/"
-	time_provisioning.config["amqp"]["credentials"]["username"] = "guest"
-	time_provisioning.config["amqp"]["credentials"]["password"] = "guest"
-	time_provisioning.config["amqp"]["connection_attempts"] = 100
-	time_provisioning.config["amqp"]["retry_delay"] = 5
+	provisioning.config["amqp"]["host"] = "127.0.0.1"
+	provisioning.config["amqp"]["virtual_host"] = "/"
+	provisioning.config["amqp"]["credentials"]["username"] = "guest"
+	provisioning.config["amqp"]["credentials"]["password"] = "guest"
+	provisioning.config["amqp"]["connection_attempts"] = 100
+	provisioning.config["amqp"]["retry_delay"] = 5
 
-	time_provisioning.consumer["internal"]["queue"]["name"] = "time_provisioning_1"
-	time_provisioning.consumer["internal"]["queue"]["arguments"] = { 'x-expires': 60 * 10 * 1000 }
+	provisioning.consumer["internal"]["queue"]["name"] = "time_provisioning_1"
+	provisioning.consumer["internal"]["queue"]["arguments"] = { 'x-expires': 60 * 10 * 1000 }
 
-	time_provisioning.input_verification["http"]["remote_addr"] = True
-	time_provisioning.input_verification["http"]["authorization"]["username"] = True
-	time_provisioning.input_verification["http"]["authorization"]["password"] = True
-	time_provisioning.input_verification["http"]["cookie_level"] = False
+	provisioning.input_verification["http"]["remote_addr"] = True
+	provisioning.input_verification["http"]["authorization"]["username"] = True
+	provisioning.input_verification["http"]["authorization"]["password"] = True
+	provisioning.input_verification["http"]["cookie_level"] = False
 
-	time_provisioning.input_verification["cwmp"]["type"]["inform"] = True
-	time_provisioning.input_verification["cwmp"]["events"]["bootstrap"] = False
-	time_provisioning.input_verification["cwmp"]["parameters"]["InternetGatewayDevice.DeviceInfo.ManufacturerOUI"] = True
-	time_provisioning.input_verification["cwmp"]["parameters"]["InternetGatewayDevice.DeviceInfo.SerialNumber"] = True
+	provisioning.input_verification["cwmp"]["type"]["inform"] = True
+	provisioning.input_verification["cwmp"]["events"]["bootstrap"] = False
+	provisioning.input_verification["cwmp"]["parameters"]["InternetGatewayDevice.DeviceInfo.ManufacturerOUI"] = True
+	provisioning.input_verification["cwmp"]["parameters"]["InternetGatewayDevice.DeviceInfo.SerialNumber"] = True
 
-	time_provisioning.external_msg_template["internal"]["exchange"]["enable"] = True
-	time_provisioning.external_msg_template["internal"]["exchange"]["name"] = time_provisioning.publisher["internal"]["exchange"]["name"]
-	time_provisioning.external_msg_template["internal"]["exchange"]["type"] = time_provisioning.publisher["internal"]["exchange"]["type"]
-	time_provisioning.external_msg_template["internal"]["exchange"]["passive"] = False
-	time_provisioning.external_msg_template["internal"]["exchange"]["durable"] = time_provisioning.publisher["internal"]["exchange"]["durable"]
-	time_provisioning.external_msg_template["internal"]["exchange"]["auto_delete"] = False
-	time_provisioning.external_msg_template["internal"]["exchange"]["internal"] = False
-	time_provisioning.external_msg_template["internal"]["exchange"]["arguments"] = False
-	time_provisioning.external_msg_template["internal"]["queue"]["enable"] = True
-	time_provisioning.external_msg_template["internal"]["queue"]["passive"] = False
-	time_provisioning.external_msg_template["internal"]["queue"]["durable"] = False
-	time_provisioning.external_msg_template["internal"]["queue"]["exclusive"] = False
-	time_provisioning.external_msg_template["internal"]["queue"]["auto_delete"] = False
-	time_provisioning.external_msg_template["internal"]["queue"]["arguments"] = { 'x-expires': 60 * 10 * 1000 }
-	time_provisioning.external_msg_template["internal"]["queue"]["consume"] = False
-	time_provisioning.external_msg_template["internal"]["message"]["enable"] = True
-	time_provisioning.external_msg_template["internal"]["message"]["properties"] = None
+	provisioning.external_msg_template["internal"]["exchange"]["enable"] = True
+	provisioning.external_msg_template["internal"]["exchange"]["name"] = provisioning.publisher["internal"]["exchange"]["name"]
+	provisioning.external_msg_template["internal"]["exchange"]["type"] = provisioning.publisher["internal"]["exchange"]["type"]
+	provisioning.external_msg_template["internal"]["exchange"]["passive"] = False
+	provisioning.external_msg_template["internal"]["exchange"]["durable"] = provisioning.publisher["internal"]["exchange"]["durable"]
+	provisioning.external_msg_template["internal"]["exchange"]["auto_delete"] = False
+	provisioning.external_msg_template["internal"]["exchange"]["internal"] = False
+	provisioning.external_msg_template["internal"]["exchange"]["arguments"] = False
+	provisioning.external_msg_template["internal"]["queue"]["enable"] = True
+	provisioning.external_msg_template["internal"]["queue"]["passive"] = False
+	provisioning.external_msg_template["internal"]["queue"]["durable"] = False
+	provisioning.external_msg_template["internal"]["queue"]["exclusive"] = False
+	provisioning.external_msg_template["internal"]["queue"]["auto_delete"] = False
+	provisioning.external_msg_template["internal"]["queue"]["arguments"] = { 'x-expires': 60 * 10 * 1000 }
+	provisioning.external_msg_template["internal"]["queue"]["consume"] = False
+	provisioning.external_msg_template["internal"]["message"]["enable"] = True
+	provisioning.external_msg_template["internal"]["message"]["properties"] = None
 
-	time_provisioning.internal_msg_template["internal"]["exchange"]["enable"] = False
-	time_provisioning.internal_msg_template["internal"]["exchange"]["name"] = time_provisioning.consumer["internal"]["exchange"]["name"]
-	time_provisioning.internal_msg_template["internal"]["queue"]["enable"] = False
-	time_provisioning.internal_msg_template["internal"]["message"]["enable"] = True
-	time_provisioning.internal_msg_template["internal"]["message"]["routing_key"] = ""
-	time_provisioning.internal_msg_template["internal"]["message"]["properties"] = None
+	provisioning.internal_msg_template["internal"]["exchange"]["enable"] = False
+	provisioning.internal_msg_template["internal"]["exchange"]["name"] = provisioning.consumer["internal"]["exchange"]["name"]
+	provisioning.internal_msg_template["internal"]["queue"]["enable"] = False
+	provisioning.internal_msg_template["internal"]["message"]["enable"] = True
+	provisioning.internal_msg_template["internal"]["message"]["routing_key"] = ""
+	provisioning.internal_msg_template["internal"]["message"]["properties"] = None
 
 	try:
-		time_provisioning.configure()
-		time_provisioning.run()
+		provisioning.configure()
+		provisioning.run()
 	except KeyboardInterrupt:
-		time_provisioning.halt()
+		provisioning.halt()
 
 if __name__ == '__main__':
 	main()
