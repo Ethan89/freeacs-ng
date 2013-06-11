@@ -18,22 +18,26 @@ class TimeProvisioning(Provisioning):
 		internal_msg = self.internal_msg_template
 
 		try:
-			archive = data["internal"]["archive"]
+			archive = data["archive"]
 			for item in archive:
 				if item == self.consumer["internal"]["queue"]["name"]:
-					self.LOG.info('already found in history')
+					self.LOG.info('already found in history, ignoring message')
 					return
 		except:
 			self.LOG.info('archive not found, creating empty archive')
 			archive = [ ]
 
 		archive.append(self.consumer["internal"]["queue"]["name"])
-		internal_msg["internal"]["archive"] = archive
+		internal_msg["archive"] = archive
 
 
 		if not (data["http"]["username"] == "freecwmp" and data["http"]["password"] == "freecwmp"):
 			self.LOG.info('device already provisioned, ignoring message')
 			return
+
+
+		internal_msg["cwmp"] = data["cwmp"]
+		internal_msg["http"] = data["http"]
 
 
 		cpe_oui = data["cwmp"]["parameters"]["InternetGatewayDevice.DeviceInfo.ManufacturerOUI"]
@@ -50,10 +54,6 @@ class TimeProvisioning(Provisioning):
 		external_msg["cwmp"]["id"] = "%016x" % random.getrandbits(64)
 		external_msg["cwmp"]["set_parameter_values"]["InternetGatewayDevice.ManagementServer.PeriodicInformEnable"] = 1
 		external_msg["cwmp"]["set_parameter_values"]["InternetGatewayDevice.ManagementServer.PeriodicInformInterval"] = 60
-
-		internal_msg["cwmp"] = data["cwmp"]
-		internal_msg["http"] = data["http"]
-
 		self.LOG.info('publishing message with content\n%s', json.dumps(external_msg, separators=(',', ':')))
 		self.LOG.info('publishing message with content\n%s', json.dumps(internal_msg, separators=(',', ':')))
 
