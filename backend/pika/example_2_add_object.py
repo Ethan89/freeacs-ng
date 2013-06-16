@@ -71,13 +71,20 @@ class WIFIProvisioning(Provisioning):
 		mongo_external_msg["cwmp"]["set_parameter_values"]["InternetGatewayDevice.LANDevice.1.WLANConfiguration.{i}.SSID"] = "OpenWrt"
 		mongo_external_msg_enc = base64.b64encode('%s' % (json.dumps(mongo_external_msg, separators=(',', ':'))))
 
-		mongo_internal_msg = copy.deepcopy(internal_msg)
+		mongo_internal_msg_1 = copy.deepcopy(internal_msg)
 		mongo_msg["archive"].append("wifi_provisioning_1_set_parameter_values")
-		mongo_internal_msg_enc = base64.b64encode('%s' % (json.dumps(mongo_internal_msg, separators=(',', ':'))))
+		mongo_internal_msg_enc_1 = base64.b64encode('%s' % (json.dumps(mongo_internal_msg_1, separators=(',', ':'))))
+
+		mongo_internal_msg_2 = copy.deepcopy(internal_msg)
+		mongo_internal_msg_2["cwmp"]["type"] = "connection_request"
+		mongo_internal_msg_2["cwmp"]["parameters"]["InternetGatewayDevice.ManagementServer.ConnectionRequestUsername"] = "freeacs-ng"
+		mongo_internal_msg_2["cwmp"]["parameters"]["InternetGatewayDevice.ManagementServer.ConnectionRequestPassword"] = "freeacs-ng"
+		mongo_internal_msg_2["internal"]["ttl"] = 5
+		mongo_internal_msg_enc_2 = base64.b64encode('%s' % (json.dumps(mongo_internal_msg_2, separators=(',', ':'))))
 
 		mongo_msg["relay"]["id"] = self.consumer["internal"]["queue"]["name"]
 		mongo_msg["relay"]["structure"] = "base64"
-		mongo_msg["relay"]["amqp"] = [ mongo_external_msg_enc, mongo_internal_msg_enc ]
+		mongo_msg["relay"]["amqp"] = [ mongo_external_msg_enc, mongo_internal_msg_enc_1, mongo_internal_msg_enc_2 ]
 
 		add_object_id = self.database_mongodb.insert(mongo_msg)
 		if not add_object_id:
@@ -114,6 +121,7 @@ def main():
 	provisioning.input_verification["cwmp"]["type"]["inform"] = True
 	provisioning.input_verification["cwmp"]["parameters"]["InternetGatewayDevice.DeviceInfo.ManufacturerOUI"] = True
 	provisioning.input_verification["cwmp"]["parameters"]["InternetGatewayDevice.DeviceInfo.SerialNumber"] = True
+	provisioning.input_verification["cwmp"]["parameters"]["InternetGatewayDevice.ManagementServer.ConnectionRequestURL"] = True
 
 	provisioning.external_msg_template = Dictionary()
 	provisioning.external_msg_template["internal"]["exchange"]["enable"] = True
