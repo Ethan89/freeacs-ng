@@ -474,6 +474,27 @@ class Provisioning(object):
 				self.LOG.error('failed to fetch cpe_software_version')
 				return
 
+		if self.input_verification["cwmp"]["parameters"]["InternetGatewayDevice.ManagementServer.ConnectionRequestURL"] == True:
+			try:
+				data["cwmp"]["parameters"]["InternetGatewayDevice.ManagementServer.ConnectionRequestURL"]
+			except:
+				self.LOG.error('failed to fetch connection_request_url')
+				return
+
+		if self.input_verification["cwmp"]["parameters"]["InternetGatewayDevice.ManagementServer.ConnectionRequestUsername"] == True:
+			try:
+				data["cwmp"]["parameters"]["InternetGatewayDevice.ManagementServer.ConnectionRequestUsername"]
+			except:
+				self.LOG.error('failed to fetch connection_request_username')
+				return
+
+		if self.input_verification["cwmp"]["parameters"]["InternetGatewayDevice.ManagementServer.ConnectionRequestPassword"] == True:
+			try:
+				data["cwmp"]["parameters"]["InternetGatewayDevice.ManagementServer.ConnectionRequestPassword"]
+			except:
+				self.LOG.error('failed to fetch connection_request_password')
+				return
+
 		self.action(data)
 
 	def action(self, messages):
