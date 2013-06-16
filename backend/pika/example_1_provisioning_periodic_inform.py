@@ -84,6 +84,7 @@ def main():
 	provisioning.input_verification["cwmp"]["parameters"]["InternetGatewayDevice.DeviceInfo.ManufacturerOUI"] = True
 	provisioning.input_verification["cwmp"]["parameters"]["InternetGatewayDevice.DeviceInfo.SerialNumber"] = True
 
+	provisioning.external_msg_template = Dictionary()
 	provisioning.external_msg_template["internal"]["exchange"]["enable"] = True
 	provisioning.external_msg_template["internal"]["exchange"]["name"] = provisioning.publisher["internal"]["exchange"]["name"]
 	provisioning.external_msg_template["internal"]["exchange"]["type"] = provisioning.publisher["internal"]["exchange"]["type"]
@@ -102,6 +103,7 @@ def main():
 	provisioning.external_msg_template["internal"]["message"]["enable"] = True
 	provisioning.external_msg_template["internal"]["message"]["properties"] = None
 
+	provisioning.internal_msg_template = Dictionary()
 	provisioning.internal_msg_template["internal"]["exchange"]["enable"] = False
 	provisioning.internal_msg_template["internal"]["exchange"]["name"] = provisioning.consumer["internal"]["exchange"]["name"]
 	provisioning.internal_msg_template["internal"]["queue"]["enable"] = False

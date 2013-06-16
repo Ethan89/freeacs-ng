@@ -40,8 +40,6 @@ class Provisioning(object):
 		self._channel = None
 		self._consumer_tag = None
 
-		self.external_msg_template = Dictionary()
-		self.internal_msg_template = Dictionary()
 		self.input_verification = Dictionary()
 
 		self.config = Dictionary()
