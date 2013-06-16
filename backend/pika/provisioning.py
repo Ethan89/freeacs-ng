@@ -293,11 +293,96 @@ class Provisioning(object):
 			self.handle(messages)
 			return
 
+		try:
+			msg_properties_content_type = messages[0]["internal"]["message"]["properties"]["content_type"]
+		except:
+			msg_properties_content_type = None
+
+		try:
+			msg_properties_content_encoding = messages[0]["internal"]["message"]["properties"]["content_encoding"]
+		except:
+			msg_properties_content_encoding = None
+
+		try:
+			msg_properties_headers = messages[0]["internal"]["message"]["properties"]["headers"]
+		except:
+			msg_properties_headers = None
+
+		try:
+			msg_properties_delivery_mode = messages[0]["internal"]["message"]["properties"]["delivery_mode"]
+		except:
+			msg_properties_delivery_mode = None
+
+		try:
+			msg_properties_priority = messages[0]["internal"]["message"]["properties"]["priority"]
+		except:
+			msg_properties_priority = None
+
+		try:
+			msg_properties_correlation_id = messages[0]["internal"]["message"]["properties"]["correlation_id"]
+		except:
+			msg_properties_correlation_id = None
+
+		try:
+			msg_properties_reply_to = messages[0]["internal"]["message"]["properties"]["reply_to"]
+		except:
+			msg_properties_reply_to = None
+
+		try:
+			msg_properties_expiration = messages[0]["internal"]["message"]["properties"]["expiration"]
+		except:
+			msg_properties_expiration = None
+
+		try:
+			msg_properties_message_id = messages[0]["internal"]["message"]["properties"]["message_id"]
+		except:
+			msg_properties_message_id = None
+
+		try:
+			msg_properties_timestamp = messages[0]["internal"]["message"]["properties"]["timestamp"]
+		except:
+			msg_properties_timestamp = None
+
+		try:
+			msg_properties_type = messages[0]["internal"]["message"]["properties"]["type"]
+		except:
+			msg_properties_type = None
+
+		try:
+			msg_properties_user_id = messages[0]["internal"]["message"]["properties"]["user_id"]
+		except:
+			msg_properties_user_id = None
+
+		try:
+			msg_properties_app_id = messages[0]["internal"]["message"]["properties"]["app_id"]
+		except:
+			msg_properties_app_id = None
+
+		try:
+			msg_properties_cluster_id = messages[0]["internal"]["message"]["properties"]["cluster_id"]
+		except:
+			msg_properties_cluster_id = None
+
+		msg_properties = pika.BasicProperties(content_type=msg_properties_content_type,
+						      content_encoding=msg_properties_content_encoding,
+						      headers=msg_properties_headers,
+						      delivery_mode=msg_properties_delivery_mode,
+						      priority=msg_properties_priority,
+						      correlation_id=msg_properties_correlation_id,
+						      reply_to=msg_properties_reply_to,
+						      expiration=msg_properties_expiration,
+						      message_id=msg_properties_message_id,
+						      timestamp=msg_properties_timestamp,
+						      type=msg_properties_type,
+						      user_id=msg_properties_user_id,
+						      app_id=msg_properties_app_id,
+						      cluster_id=msg_properties_cluster_id)
+
 		self.LOG.info('publishing message')
 		self._channel.basic_publish(exchange=messages[0]["internal"]["exchange"]["name"],
 					    routing_key=messages[0]["internal"]["message"]["routing_key"],
 					    body=json.dumps(messages[0], separators=(',', ':')),
-					    properties=messages[0]["internal"]["message"]["properties"])
+					    properties=msg_properties)
 
 		self.handle(messages)
 
