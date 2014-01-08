@@ -20,18 +20,11 @@
 # Generated files
 #
 
-/aclocal.m4
-/autom4te.cache/
-/compile
-/configure
-/config.log
-/config.status
-/depcomp
-/INSTALL
-/install-sh
-/missing
+/CMakeCache.txt
+/CMakeFiles
+/cmake_install.cmake
 /Makefile
-/Makefile.in
+/bin
 
 # stgit generated dirs
 patches-*

@@ -1,0 +1,21 @@
+# CNETSTRING_FOUND - true if library and headers were found
+# CNETSTRING_INCLUDE_DIRS - include directories
+# CNETSTRING_LIBRARIES - library directories
+
+find_package(PkgConfig)
+pkg_check_modules(PC_CNETSTRING QUIET netstring)
+
+find_path(CNETSTRING_INCLUDE_DIR netstring.h
+	HINTS ${PC_CNETSTRING_INCLUDEDIR} ${PC_CNETSTRING_INCLUDE_DIRS})
+
+find_library(CNETSTRING_LIBRARY NAMES netstring libnetstring
+	HINTS ${PC_CNETSTRING_LIBDIR} ${PC_CNETSTRING_LIBRARY_DIRS})
+
+set(CNETSTRING_LIBRARIES ${CNETSTRING_LIBRARY})
+set(CNETSTRING_INCLUDE_DIRS ${CNETSTRING_INCLUDE_DIR})
+
+include(FindPackageHandleStandardArgs)
+
+find_package_handle_standard_args(CNETSTRING DEFAULT_MSG CNETSTRING_LIBRARY CNETSTRING_INCLUDE_DIR)
+
+mark_as_advanced(CNETSTRING_INCLUDE_DIR CNETSTRING_LIBRARY)

@@ -1,0 +1,21 @@
+# LIBEVENT2_FOUND - true if library and headers were found
+# LIBEVENT2_INCLUDE_DIRS - include directories
+# LIBEVENT2_LIBRARIES - library directories
+
+find_package(PkgConfig)
+pkg_check_modules(PC_LIBEVENT2 QUIET event2)
+
+find_path(LIBEVENT2_INCLUDE_DIR event2/dns.h
+	HINTS ${PC_LIBEVENT2_INCLUDEDIR} ${PC_LIBEVENT2_INCLUDE_DIRS})
+
+find_library(LIBEVENT2_LIBRARY NAMES event libevent
+	HINTS ${PC_LIBEVENT2_LIBDIR} ${PC_LIBEVENT2_LIBRARY_DIRS})
+
+set(LIBEVENT2_LIBRARIES ${LIBEVENT2_LIBRARY})
+set(LIBEVENT2_INCLUDE_DIRS ${LIBEVENT2_INCLUDE_DIR})
+
+include(FindPackageHandleStandardArgs)
+
+find_package_handle_standard_args(LIBEVENT2 DEFAULT_MSG LIBEVENT2_LIBRARY LIBEVENT2_INCLUDE_DIR)
+
+mark_as_advanced(LIBEVENT2_INCLUDE_DIR LIBEVENT2_LIBRARY)
