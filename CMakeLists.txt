@@ -2,6 +2,12 @@ cmake_minimum_required(VERSION 2.6)
 PROJECT(freeacs-ng)
 ADD_DEFINITIONS(-Wall -Werror --std=gnu99 -Wmissing-declarations)
 
+OPTION(DUMMY_MODE "if enabled freeacs-ng will exit after serving first request" OFF)
+
+IF(DUMMY_MODE)
+	ADD_DEFINITIONS(-DDUMMY_MODE)
+endif()
+
 FILE(MAKE_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/bin)
 
 SET(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${CMAKE_SOURCE_DIR}/build/modules")
