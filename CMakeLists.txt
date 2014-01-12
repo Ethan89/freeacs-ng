@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 2.6)
 PROJECT(freeacs-ng)
-ADD_DEFINITIONS(-Os -Wall --std=gnu99)
+ADD_DEFINITIONS(-Wall -Werror --std=gnu99 -Wmissing-declarations)
 
 FILE(MAKE_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/bin)
 
