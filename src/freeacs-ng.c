@@ -128,7 +128,7 @@ error:
 	return NULL;
 }
 
-void release_connection(struct connection_t *connection, bool error)
+static void release_connection(struct connection_t *connection, bool error)
 {
 	if (!error)
 		fprintf(stderr, "Dropping connection.\n");
@@ -213,7 +213,7 @@ static void finish_head(struct scgi_parser *parser)
 		    && strcmp((const char *) name.iov_base, CONTENT_LENGTH) == 0)
 		{
 			connection->header[_CONTENT_LENGTH].data =
-				(char *) data.iov_base;
+				(u_char *) data.iov_base;
 			connection->header[_CONTENT_LENGTH].len =
 				strlen((const char *) data.iov_base);
 
@@ -224,7 +224,7 @@ static void finish_head(struct scgi_parser *parser)
 		    && strcmp((const char *) name.iov_base, HTTP_AUTHORIZATION) == 0)
 		{
 			connection->header[_HTTP_AUTHORIZATION].data =
-				(char *) data.iov_base;
+				(u_char *) data.iov_base;
 			connection->header[_HTTP_AUTHORIZATION].len =
 				strlen((const char *) data.iov_base);
 
@@ -235,7 +235,7 @@ static void finish_head(struct scgi_parser *parser)
 		    && strcmp((const char *) name.iov_base, HTTP_COOKIE) == 0)
 		{
 			connection->header[_HTTP_COOKIE].data =
-				(char *) data.iov_base;
+				(u_char *) data.iov_base;
 			connection->header[_HTTP_COOKIE].len =
 				strlen((const char *) data.iov_base);
 
@@ -246,7 +246,7 @@ static void finish_head(struct scgi_parser *parser)
 		    && strcmp((const char *) name.iov_base, REMOTE_ADDR) == 0)
 		{
 			connection->header[_REMOTE_ADDR].data =
-				(char *) data.iov_base;
+				(u_char *) data.iov_base;
 			connection->header[_REMOTE_ADDR].len =
 				strlen((const char *) data.iov_base);
 
@@ -257,7 +257,7 @@ static void finish_head(struct scgi_parser *parser)
 		    && strcmp((const char *) name.iov_base, REQUEST_METHOD) == 0)
 		{
 			connection->header[_REQUEST_METHOD].data =
-				(char *) data.iov_base;
+				(u_char *) data.iov_base;
 			connection->header[_REQUEST_METHOD].len =
 				strlen((const char *) data.iov_base);
 
@@ -364,7 +364,7 @@ static void send_response(struct scgi_parser *parser)
 	}
 
 	/* ignore everything that is not POST method */
-	if (strcmp(connection->header[_REQUEST_METHOD].data, REQUEST_METHOD_POST)) {
+	if (strcmp((char *) connection->header[_REQUEST_METHOD].data, REQUEST_METHOD_POST)) {
 		evbuffer_add(output, ARRAY_AND_SIZE(HTTP_HEADER_500 NEWLINE) - 1);
 		connection->tag |= REQUEST_FINISHED;
 		return;
@@ -399,7 +399,7 @@ static void send_response(struct scgi_parser *parser)
 	lxml2_parser_init();
 
 	/* analyze received message */
-	if (atoi(connection->header[_CONTENT_LENGTH].data) != 0
+	if (atoi((char *) connection->header[_CONTENT_LENGTH].data) != 0
 	    && xml_message_analyze(&connection->msg, &connection->tag, &jso_cwmp))
 	{
 		fprintf(stderr, "failed while analyzing xml message\n");
@@ -409,17 +409,17 @@ static void send_response(struct scgi_parser *parser)
 
 	/* add http headers to the json object */
 	if (connection->header[_HTTP_COOKIE].data) {
-		jso1 = json_object_new_string(connection->header[_HTTP_COOKIE].data);
+		jso1 = json_object_new_string((char *) connection->header[_HTTP_COOKIE].data);
 		json_object_object_add(jso_http, "cookie", jso1);
 	}
 
 	if (connection->header[_HTTP_AUTHORIZATION].data) {
-		jso1 = json_object_new_string(connection->header[_HTTP_AUTHORIZATION].data);
+		jso1 = json_object_new_string((char *) connection->header[_HTTP_AUTHORIZATION].data);
 		json_object_object_add(jso_http, "authorization", jso1);
 	}
 
 	if (connection->header[_REMOTE_ADDR].data) {
-		jso1 = json_object_new_string(connection->header[_REMOTE_ADDR].data);
+		jso1 = json_object_new_string((char *) connection->header[_REMOTE_ADDR].data);
 		json_object_object_add(jso_http, "remote_addr", jso1);
 	}
 
@@ -429,7 +429,7 @@ static void send_response(struct scgi_parser *parser)
 
 	cwmp_str_t msg = {
 		.data	= c,
-		.len	= strlen(c)
+		.len	= strlen((char *) c)
 	};
 
 	rc = amqp_notify(&msg);
@@ -455,7 +455,7 @@ static void send_response(struct scgi_parser *parser)
 			continue;
 		}
 
-		if (strcmp(connection->header[_HTTP_AUTHORIZATION].data, auth->factory.data) == 0) {
+		if (strcmp((char *) connection->header[_HTTP_AUTHORIZATION].data, (char *) auth->factory.data) == 0) {
 			default_credentials = true;
 			break;
 		}
@@ -463,7 +463,7 @@ static void send_response(struct scgi_parser *parser)
 
 	/* backend has been notified, give it some time for provisioning */
 	if (connection->header[_HTTP_COOKIE].data
-	    && strcmp(connection->header[_HTTP_COOKIE].data, "level=0") == 0
+	    && strcmp((char *) connection->header[_HTTP_COOKIE].data, "level=0") == 0
 	    && default_credentials)
 	{
 		evbuffer_add(output, ARRAY_AND_SIZE(HTTP_HEADER_200_CONTENT_XML) - 1);
@@ -474,7 +474,7 @@ static void send_response(struct scgi_parser *parser)
 		goto clean;
 	}
 
-	if (atoi(connection->header[_CONTENT_LENGTH].data) == 0
+	if (atoi((char *) connection->header[_CONTENT_LENGTH].data) == 0
 	    || connection->tag & XML_CWMP_TYPE_SET_PARAM_RES)
 	{
 		cwmp_str_t queue = {
@@ -482,7 +482,7 @@ static void send_response(struct scgi_parser *parser)
 			.len	= amqp_queue.provisioning.len
 		};
 
-		if (strcmp("@remote_addr", amqp_queue.provisioning.data) == 0)
+		if (strcmp("@remote_addr", (char *) amqp_queue.provisioning.data) == 0)
 		{
 			queue.data = connection->header[_REMOTE_ADDR].data;
 			queue.len = connection->header[_REMOTE_ADDR].len;
@@ -505,7 +505,7 @@ static void send_response(struct scgi_parser *parser)
 			goto clean;
 		}
 
-		json_msg_out = json_tokener_parse(msg.data);
+		json_msg_out = json_tokener_parse((char *) msg.data);
 
 		free(msg.data);
 		msg.data = NULL;
@@ -604,7 +604,7 @@ static void read_cb(struct bufferevent *stream, void *context)
 	int content_length = -1;
 
 	if (connection->tag & REQUEST_HEAD_APPROVED) {
-		content_length = atoi(connection->header[_CONTENT_LENGTH].data);
+		content_length = atoi((char *) connection->header[_CONTENT_LENGTH].data);
 	}
 
 	if (connection->parser.state == scgi_parser_body
