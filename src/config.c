@@ -28,7 +28,7 @@ struct amqp_queue_t amqp_queue;
 static int config_init_scgi()
 {
 	struct uci_section *s;
-	struct uci_element *e1, *e2;
+	struct uci_element *e1;
 	int counter_section = 0;
 	int counter_address = 0;
 	int counter_port = 0;
@@ -88,7 +88,7 @@ static int config_init_scgi()
 static int config_init_amqp()
 {
 	struct uci_section *s;
-	struct uci_element *e1, *e2;
+	struct uci_element *e1;
 	int counter_section = 0;
 	amqp.host = NULL;
 	amqp.port = 0;
@@ -183,7 +183,7 @@ error:
 static int config_init_amqp_exchange()
 {
 	struct uci_section *s;
-	struct uci_element *e1, *e2;
+	struct uci_element *e1;
 	int counter_section = 0;
 	amqp_exchange.broadcast.data = NULL;
 	amqp_exchange.broadcast.len = 0;
@@ -217,7 +217,7 @@ static int config_init_amqp_exchange()
 			/* this *should* not happen but just in case */
 			if (amqp_exchange.broadcast.data) free(amqp_exchange.broadcast.data);
 
-			amqp_exchange.broadcast.data = strdup(uci_to_option(e1)->v.string);
+			amqp_exchange.broadcast.data = (u_char *) strdup(uci_to_option(e1)->v.string);
 
 			if (!amqp_exchange.broadcast.data) {
 				fprintf(stderr, "can't allocate enough memory...\n");
@@ -233,7 +233,7 @@ static int config_init_amqp_exchange()
 			/* this *should* not happen but just in case */
 			if (amqp_exchange.provisioning.data) free(amqp_exchange.provisioning.data);
 
-			amqp_exchange.provisioning.data = strdup(uci_to_option(e1)->v.string);
+			amqp_exchange.provisioning.data = (u_char *) strdup(uci_to_option(e1)->v.string);
 
 			if (!amqp_exchange.provisioning.data) {
 				fprintf(stderr, "can't allocate enough memory...\n");
@@ -258,7 +258,7 @@ static int config_init_amqp_exchange()
 static int config_init_amqp_queue()
 {
 	struct uci_section *s;
-	struct uci_element *e1, *e2;
+	struct uci_element *e1;
 	int counter_section = 0;
 	amqp_queue.provisioning.data = NULL;
 	amqp_queue.provisioning.len = 0;
@@ -290,7 +290,7 @@ static int config_init_amqp_queue()
 			/* this *should* not happen but just in case */
 			if (amqp_queue.provisioning.data) free(amqp_queue.provisioning.data);
 
-			amqp_queue.provisioning.data = strdup(uci_to_option(e1)->v.string);
+			amqp_queue.provisioning.data = (u_char *) strdup(uci_to_option(e1)->v.string);
 
 			if (!amqp_queue.provisioning.data) {
 				fprintf(stderr, "can't allocate enough memory...\n");
@@ -345,7 +345,7 @@ static int config_init_authorization()
 				return -1;
 			}
 
-			auth->factory.data = e2->name;
+			auth->factory.data = (u_char *) e2->name;
 			auth->factory.len = strlen(e2->name);
 			LIST_INSERT_HEAD(&auth_head, auth, entries);
 
