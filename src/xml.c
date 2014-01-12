@@ -7,6 +7,8 @@
  *	Copyright (C) 2012 Luka Perkov <freeacs-ng@lukaperkov.net>
  */
 
+#define _GNU_SOURCE
+
 #include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -22,14 +24,14 @@
 int xml_message_analyze(cwmp_str_t *msg, uintptr_t *tag, json_object **json_obj)
 {
 	lxml2_doc *doc;
-	lxml2_xpath_ctx *xpath_ctx;
+	lxml2_xpath_ctx *xpath_ctx = NULL;
 	lxml2_xpath_obj *xpath_obj;
 	u_char *xpath_expr;
 	int rc;
 
 	*tag = XML_CWMP_NONE;
 
-	doc = lxml2_mem_read(msg->data, msg->len, NULL, NULL,
+	doc = lxml2_mem_read((const char *) msg->data, msg->len, NULL, NULL,
 			     XML_PARSE_NOERROR | XML_PARSE_NOWARNING);
 	if (doc == NULL) {
 		fprintf(stderr, "could not read the xml message\n");
@@ -43,39 +45,39 @@ int xml_message_analyze(cwmp_str_t *msg, uintptr_t *tag, json_object **json_obj)
 	}
 
 	rc = lxml2_xpath_register_ns(xpath_ctx,
-				     "soap_env",
-				     "http://schemas.xmlsoap.org/soap/envelope/");
+				     (const u_char *) "soap_env",
+				     (const u_char *) "http://schemas.xmlsoap.org/soap/envelope/");
 	if (rc == -1) {
 		fprintf(stderr, "could not register namespace\n");
 		goto error;
 	}
 
 	rc = lxml2_xpath_register_ns(xpath_ctx,
-				     "cwmp_1_0",
-				     CWMP_VERSION_1_0);
+				     (const u_char *) "cwmp_1_0",
+				     (const u_char *) CWMP_VERSION_1_0);
 	if (rc == -1) {
 		fprintf(stderr, "could not register namespace\n");
 		goto error;
 	}
 
 	rc = lxml2_xpath_register_ns(xpath_ctx,
-				     "cwmp_1_1",
-				     CWMP_VERSION_1_1);
+				     (const u_char *) "cwmp_1_1",
+				     (const u_char *) CWMP_VERSION_1_1);
 	if (rc == -1) {
 		fprintf(stderr, "could not register namespace\n");
 		goto error;
 	}
 
 	rc = lxml2_xpath_register_ns(xpath_ctx,
-				     "cwmp_1_2",
-				     CWMP_VERSION_1_2);
+				     (const u_char *) "cwmp_1_2",
+				     (const u_char *) CWMP_VERSION_1_2);
 	if (rc == -1) {
 		fprintf(stderr, "could not register namespace\n");
 		goto error;
 	}
 
 	/* CWMP-1-0 inform message */
-	xpath_expr = "/soap_env:Envelope/soap_env:Body/cwmp_1_0:Inform";
+	xpath_expr = (u_char *) "/soap_env:Envelope/soap_env:Body/cwmp_1_0:Inform";
 	xpath_obj = lxml2_xpath_eval_expr(xpath_expr, xpath_ctx);
 	if (xpath_obj == NULL) {
 		fprintf(stderr, "could not create xpath object\n");
@@ -91,7 +93,7 @@ int xml_message_analyze(cwmp_str_t *msg, uintptr_t *tag, json_object **json_obj)
 	lxml2_xpath_free_obj(xpath_obj);
 
 	/* CWMP-1-1 inform message */
-	xpath_expr = "/soap_env:Envelope/soap_env:Body/cwmp_1_1:Inform";
+	xpath_expr = (u_char *) "/soap_env:Envelope/soap_env:Body/cwmp_1_1:Inform";
 	xpath_obj = lxml2_xpath_eval_expr(xpath_expr, xpath_ctx);
 	if (xpath_obj == NULL) {
 		fprintf(stderr, "could not create xpath object\n");
@@ -107,7 +109,7 @@ int xml_message_analyze(cwmp_str_t *msg, uintptr_t *tag, json_object **json_obj)
 	lxml2_xpath_free_obj(xpath_obj);
 
 	/* CWMP-1-2 inform message */
-	xpath_expr = "/soap_env:Envelope/soap_env:Body/cwmp_1_2:Inform";
+	xpath_expr = (u_char *) "/soap_env:Envelope/soap_env:Body/cwmp_1_2:Inform";
 	xpath_obj = lxml2_xpath_eval_expr(xpath_expr, xpath_ctx);
 	if (xpath_obj == NULL) {
 		fprintf(stderr, "could not create xpath object\n");
@@ -123,7 +125,7 @@ int xml_message_analyze(cwmp_str_t *msg, uintptr_t *tag, json_object **json_obj)
 	lxml2_xpath_free_obj(xpath_obj);
 
 	/* CWMP-1-0 set parameter response message */
-	xpath_expr = "/soap_env:Envelope/soap_env:Body/cwmp_1_0:SetParameterValuesResponse";
+	xpath_expr = (u_char *) "/soap_env:Envelope/soap_env:Body/cwmp_1_0:SetParameterValuesResponse";
 	xpath_obj = lxml2_xpath_eval_expr(xpath_expr, xpath_ctx);
 	if (xpath_obj == NULL) {
 		fprintf(stderr, "could not create xpath object\n");
@@ -139,7 +141,7 @@ int xml_message_analyze(cwmp_str_t *msg, uintptr_t *tag, json_object **json_obj)
 	lxml2_xpath_free_obj(xpath_obj);
 
 	/* CWMP-1-1 set parameter response message */
-	xpath_expr = "/soap_env:Envelope/soap_env:Body/cwmp_1_1:SetParameterValuesResponse";
+	xpath_expr = (u_char *) "/soap_env:Envelope/soap_env:Body/cwmp_1_1:SetParameterValuesResponse";
 	xpath_obj = lxml2_xpath_eval_expr(xpath_expr, xpath_ctx);
 	if (xpath_obj == NULL) {
 		fprintf(stderr, "could not create xpath object\n");
@@ -155,7 +157,7 @@ int xml_message_analyze(cwmp_str_t *msg, uintptr_t *tag, json_object **json_obj)
 	lxml2_xpath_free_obj(xpath_obj);
 
 	/* CWMP-1-2 set parameter response message */
-	xpath_expr = "/soap_env:Envelope/soap_env:Body/cwmp_1_2:SetParameterValuesResponse";
+	xpath_expr = (u_char *) "/soap_env:Envelope/soap_env:Body/cwmp_1_2:SetParameterValuesResponse";
 	xpath_obj = lxml2_xpath_eval_expr(xpath_expr, xpath_ctx);
 	if (xpath_obj == NULL) {
 		fprintf(stderr, "could not create xpath object\n");
@@ -171,7 +173,7 @@ int xml_message_analyze(cwmp_str_t *msg, uintptr_t *tag, json_object **json_obj)
 	lxml2_xpath_free_obj(xpath_obj);
 
 	/* CWMP-1-0 add object response message */
-	xpath_expr = "/soap_env:Envelope/soap_env:Body/cwmp_1_0:AddObjectResponse";
+	xpath_expr = (u_char *) "/soap_env:Envelope/soap_env:Body/cwmp_1_0:AddObjectResponse";
 	xpath_obj = lxml2_xpath_eval_expr(xpath_expr, xpath_ctx);
 	if (xpath_obj == NULL) {
 		fprintf(stderr, "could not create xpath object\n");
@@ -187,7 +189,7 @@ int xml_message_analyze(cwmp_str_t *msg, uintptr_t *tag, json_object **json_obj)
 	lxml2_xpath_free_obj(xpath_obj);
 
 	/* CWMP-1-1 add object response message */
-	xpath_expr = "/soap_env:Envelope/soap_env:Body/cwmp_1_1:AddObjectResponse";
+	xpath_expr = (u_char *) "/soap_env:Envelope/soap_env:Body/cwmp_1_1:AddObjectResponse";
 	xpath_obj = lxml2_xpath_eval_expr(xpath_expr, xpath_ctx);
 	if (xpath_obj == NULL) {
 		fprintf(stderr, "could not create xpath object\n");
@@ -203,7 +205,7 @@ int xml_message_analyze(cwmp_str_t *msg, uintptr_t *tag, json_object **json_obj)
 	lxml2_xpath_free_obj(xpath_obj);
 
 	/* CWMP-1-2 add object response message */
-	xpath_expr = "/soap_env:Envelope/soap_env:Body/cwmp_1_2:AddObjectResponse";
+	xpath_expr = (u_char *) "/soap_env:Envelope/soap_env:Body/cwmp_1_2:AddObjectResponse";
 	xpath_obj = lxml2_xpath_eval_expr(xpath_expr, xpath_ctx);
 	if (xpath_obj == NULL) {
 		fprintf(stderr, "could not create xpath object\n");
@@ -218,9 +220,9 @@ int xml_message_analyze(cwmp_str_t *msg, uintptr_t *tag, json_object **json_obj)
 	}
 	lxml2_xpath_free_obj(xpath_obj);
 
-	if (*tag & XML_CWMP_VERSION_1_0) xpath_expr = "//cwmp_1_0:ID";
-	if (*tag & XML_CWMP_VERSION_1_1) xpath_expr = "//cwmp_1_1:ID";
-	if (*tag & XML_CWMP_VERSION_1_2) xpath_expr = "//cwmp_1_2:ID";
+	if (*tag & XML_CWMP_VERSION_1_0) xpath_expr = (u_char *) "//cwmp_1_0:ID";
+	if (*tag & XML_CWMP_VERSION_1_1) xpath_expr = (u_char *) "//cwmp_1_1:ID";
+	if (*tag & XML_CWMP_VERSION_1_2) xpath_expr = (u_char *) "//cwmp_1_2:ID";
 
 	xpath_obj = lxml2_xpath_eval_expr(xpath_expr, xpath_ctx);
 	if (xpath_obj == NULL) {
@@ -231,14 +233,14 @@ int xml_message_analyze(cwmp_str_t *msg, uintptr_t *tag, json_object **json_obj)
 	for(int i = 0; i < ((xpath_obj->nodesetval) ? xpath_obj->nodesetval->nodeNr : 0); ++i) {
 		if(xpath_obj->nodesetval->nodeTab[i]->type == XML_ELEMENT_NODE) {
 			u_char *id = lxml2_node_get_content(xpath_obj->nodesetval->nodeTab[i]);
-			json_object_object_add(*json_obj, "id", json_object_new_string((char *) id));
+			json_object_object_add(*json_obj, "id", json_object_new_string((const char *) id));
 			free(id);
 		}
 	}
 	lxml2_xpath_free_obj(xpath_obj);
 
 	if (*tag & XML_CWMP_TYPE_INFORM) {
-		xpath_expr = "//EventCode";
+		xpath_expr = (u_char *) "//EventCode";
 
 		xpath_obj = lxml2_xpath_eval_expr(xpath_expr, xpath_ctx);
 		if (xpath_obj == NULL) {
@@ -250,15 +252,15 @@ int xml_message_analyze(cwmp_str_t *msg, uintptr_t *tag, json_object **json_obj)
 		for(int i = 0; i < ((xpath_obj->nodesetval) ? xpath_obj->nodesetval->nodeNr : 0); ++i) {
 			if(xpath_obj->nodesetval->nodeTab[i]->type == XML_ELEMENT_NODE) {
 				u_char *e1 = lxml2_node_get_content(xpath_obj->nodesetval->nodeTab[i]);
-				u_char *e2 = lfc_str_event_code(lfc_int_event_code((char *) e1), 1);
-				json_object_array_add(json_events, json_object_new_string(e2));
+				u_char *e2 = (u_char *) lfc_str_event_code(lfc_int_event_code((char *) e1), 1);
+				json_object_array_add(json_events, json_object_new_string((const char *) e2));
 				free(e1);
 			}
 		}
 		lxml2_xpath_free_obj(xpath_obj);
 		json_object_object_add(*json_obj, "events", json_events);
 
-		xpath_expr = "//ParameterList/ParameterValueStruct/Name";
+		xpath_expr = (u_char *) "//ParameterList/ParameterValueStruct/Name";
 		xpath_obj = lxml2_xpath_eval_expr(xpath_expr, xpath_ctx);
 		if (xpath_obj == NULL) {
 			fprintf(stderr, "could not create xpath object\n");
@@ -272,7 +274,7 @@ int xml_message_analyze(cwmp_str_t *msg, uintptr_t *tag, json_object **json_obj)
 				u_char *parameter = lxml2_node_get_content(xpath_obj->nodesetval->nodeTab[i]);
 				lxml2_node *sibling = xmlNextElementSibling(xpath_obj->nodesetval->nodeTab[i]);
 				u_char *value = lxml2_node_get_content(sibling);
-				json_object_object_add(json_parameters, parameter, json_object_new_string(value));
+				json_object_object_add(json_parameters, (char *) parameter, json_object_new_string((char *) value));
 				free(parameter);
 				free(value);
 			}
@@ -283,9 +285,9 @@ int xml_message_analyze(cwmp_str_t *msg, uintptr_t *tag, json_object **json_obj)
 		json_object_object_add(*json_obj, "parameters", json_parameters);
 	}
 
-	if (*tag & XML_CWMP_VERSION_1_0) xpath_expr = "//cwmp_1_0:ID";
-	if (*tag & XML_CWMP_VERSION_1_1) xpath_expr = "//cwmp_1_1:ID";
-	if (*tag & XML_CWMP_VERSION_1_2) xpath_expr = "//cwmp_1_2:ID";
+	if (*tag & XML_CWMP_VERSION_1_0) xpath_expr = (u_char *) "//cwmp_1_0:ID";
+	if (*tag & XML_CWMP_VERSION_1_1) xpath_expr = (u_char *) "//cwmp_1_1:ID";
+	if (*tag & XML_CWMP_VERSION_1_2) xpath_expr = (u_char *) "//cwmp_1_2:ID";
 
 	xpath_obj = lxml2_xpath_eval_expr(xpath_expr, xpath_ctx);
 	if (xpath_obj == NULL) {
@@ -302,7 +304,7 @@ int xml_message_analyze(cwmp_str_t *msg, uintptr_t *tag, json_object **json_obj)
 	lxml2_xpath_free_obj(xpath_obj);
 
 	if (*tag & XML_CWMP_TYPE_SET_PARAM_RES) {
-		xpath_expr = "//Status";
+		xpath_expr = (u_char *) "//Status";
 
 		xpath_obj = lxml2_xpath_eval_expr(xpath_expr, xpath_ctx);
 		if (xpath_obj == NULL) {
@@ -310,7 +312,7 @@ int xml_message_analyze(cwmp_str_t *msg, uintptr_t *tag, json_object **json_obj)
 			goto error;
 		}
 
-		u_char *value;
+		u_char *value = NULL;
 		for(int i = 0; i < ((xpath_obj->nodesetval) ? xpath_obj->nodesetval->nodeNr : 0); ++i) {
 			if(xpath_obj->nodesetval->nodeTab[i]->type == XML_ELEMENT_NODE) {
 				value = lxml2_node_get_content(xpath_obj->nodesetval->nodeTab[i]);
@@ -319,12 +321,12 @@ int xml_message_analyze(cwmp_str_t *msg, uintptr_t *tag, json_object **json_obj)
 		lxml2_xpath_free_obj(xpath_obj);
 
 		json_object_object_add(*json_obj, "type", json_object_new_string("set_parameter_value_response"));
-		if (value) json_object_object_add(*json_obj, "status", json_object_new_string(value));
+		if (value) json_object_object_add(*json_obj, "status", json_object_new_string( (char *) value));
 		free(value);
 	}
 
 	if (*tag & XML_CWMP_TYPE_ADD_OBJECT_RES) {
-		xpath_expr = "//InstanceNumber";
+		xpath_expr = (u_char *) "//InstanceNumber";
 
 		xpath_obj = lxml2_xpath_eval_expr(xpath_expr, xpath_ctx);
 		if (xpath_obj == NULL) {
@@ -332,7 +334,7 @@ int xml_message_analyze(cwmp_str_t *msg, uintptr_t *tag, json_object **json_obj)
 			goto error;
 		}
 
-		u_char *c;
+		u_char *c = NULL;
 		for(int i = 0; i < ((xpath_obj->nodesetval) ? xpath_obj->nodesetval->nodeNr : 0); ++i) {
 			if(xpath_obj->nodesetval->nodeTab[i]->type == XML_ELEMENT_NODE) {
 				c = lxml2_node_get_content(xpath_obj->nodesetval->nodeTab[i]);
@@ -341,10 +343,10 @@ int xml_message_analyze(cwmp_str_t *msg, uintptr_t *tag, json_object **json_obj)
 		lxml2_xpath_free_obj(xpath_obj);
 
 		json_object_object_add(*json_obj, "type", json_object_new_string("add_object_response"));
-		if (c) json_object_object_add(*json_obj, "instance_number", json_object_new_string(c));
+		if (c) json_object_object_add(*json_obj, "instance_number", json_object_new_string((char *) c));
 		free(c);
 
-		xpath_expr = "//Status";
+		xpath_expr = (u_char *) "//Status";
 
 		xpath_obj = lxml2_xpath_eval_expr(xpath_expr, xpath_ctx);
 		if (xpath_obj == NULL) {
@@ -360,7 +362,7 @@ int xml_message_analyze(cwmp_str_t *msg, uintptr_t *tag, json_object **json_obj)
 		lxml2_xpath_free_obj(xpath_obj);
 
 		json_object_object_add(*json_obj, "type", json_object_new_string("add_object_response"));
-		if (c) json_object_object_add(*json_obj, "status", json_object_new_string(c));
+		if (c) json_object_object_add(*json_obj, "status", json_object_new_string((char *) c));
 		free(c);
 	}
 	lxml2_xpath_free_ctx(xpath_ctx);
@@ -373,6 +375,8 @@ int xml_message_analyze(cwmp_str_t *msg, uintptr_t *tag, json_object **json_obj)
 error:
 	if (xpath_ctx) lxml2_xpath_free_ctx(xpath_ctx);
 	if (doc) lxml2_doc_free(doc);
+
+	return 0;
 }
 
 int xml_message_create(cwmp_str_t *msg, json_object *json_obj)
@@ -416,25 +420,25 @@ int xml_message_create(cwmp_str_t *msg, json_object *json_obj)
 		goto error;
 	}
 
-	rc = lxml2_xpath_register_ns(xpath_ctx, "soap_env", "http://schemas.xmlsoap.org/soap/envelope/");
+	rc = lxml2_xpath_register_ns(xpath_ctx, (u_char *) "soap_env", (u_char *) "http://schemas.xmlsoap.org/soap/envelope/");
 	if (rc == -1) {
 		fprintf(stderr, "could not register xpath namespace\n");
 		goto error;
 	}
 
-	rc = lxml2_xpath_register_ns(xpath_ctx, "cwmp_1_0", CWMP_VERSION_1_0);
+	rc = lxml2_xpath_register_ns(xpath_ctx, (u_char *) "cwmp_1_0", (u_char *) CWMP_VERSION_1_0);
 	if (rc == -1) {
 		fprintf(stderr, "could not register xpath namespace\n");
 		goto error;
 	}
 
-	ns_soap_env = lxml2_new_ns(NULL, "http://schemas.xmlsoap.org/soap/envelope/", "soap_env");
+	ns_soap_env = lxml2_new_ns(NULL, (u_char *) "http://schemas.xmlsoap.org/soap/envelope/", (u_char *) "soap_env");
 	if (ns_soap_env == NULL) {
 		fprintf(stderr, "could not register namespace\n");
 		goto error;
 	}
 
-	ns_cwmp = lxml2_new_ns(NULL, "urn:dslforum-org:cwmp-1-0", "cwmp");
+	ns_cwmp = lxml2_new_ns(NULL, (u_char *) "urn:dslforum-org:cwmp-1-0", (u_char *) "cwmp");
 	if (ns_cwmp == NULL) {
 		fprintf(stderr, "could not register namespace\n");
 		goto error;
@@ -443,7 +447,7 @@ int xml_message_create(cwmp_str_t *msg, json_object *json_obj)
 	if (json_object_object_get(json_cwmp_obj, "id")
 	    && json_object_get_string(json_object_object_get(json_cwmp_obj, "id")))
 	{
-		xpath_expr = "/soap_env:Envelope/soap_env:Header";
+		xpath_expr = (u_char *) "/soap_env:Envelope/soap_env:Header";
 		xpath_obj = lxml2_xpath_eval_expr(xpath_expr, xpath_ctx);
 		if (xpath_obj == NULL) {
 			fprintf(stderr, "could not evaluate xpath expression\n");
@@ -465,14 +469,14 @@ int xml_message_create(cwmp_str_t *msg, json_object *json_obj)
 	if (json_object_object_get(json_cwmp_obj, "set_parameter_values") != NULL) {
 		json_object *j = json_object_object_get(json_cwmp_obj, "set_parameter_values");
 
-		xpath_expr = "/soap_env:Envelope/soap_env:Body";
+		xpath_expr = (u_char *) "/soap_env:Envelope/soap_env:Body";
 		xpath_obj = lxml2_xpath_eval_expr(xpath_expr, xpath_ctx);
 		if (xpath_obj == NULL) {
 			fprintf(stderr, "could not evaluate xpath expression\n");
 			goto error;
 		}
 
-		lxml2_node *node_paramaters, *n;
+		lxml2_node *node_paramaters = NULL, *n;
 		for(int i = 0; i < ((xpath_obj->nodesetval) ? xpath_obj->nodesetval->nodeNr : 0); ++i) {
 			if(xpath_obj->nodesetval->nodeTab[i]->type == XML_ELEMENT_NODE) {
 				n = lxml2_new_child(xpath_obj->nodesetval->nodeTab[i],
@@ -519,7 +523,7 @@ int xml_message_create(cwmp_str_t *msg, json_object *json_obj)
 	if (json_object_object_get(json_cwmp_obj, "add_object") != NULL) {
 		json_object *j = json_object_object_get(json_cwmp_obj, "add_object");
 
-		xpath_expr = "/soap_env:Envelope/soap_env:Body";
+		xpath_expr = (u_char *) "/soap_env:Envelope/soap_env:Body";
 		xpath_obj = lxml2_xpath_eval_expr(xpath_expr, xpath_ctx);
 		if (xpath_obj == NULL) {
 			fprintf(stderr, "could not evaluate xpath expression\n");
@@ -534,7 +538,7 @@ int xml_message_create(cwmp_str_t *msg, json_object *json_obj)
 						    (u_char *) "AddObject", NULL);
 				if (!n) goto error;
 
-				node_object = lxml2_new_child(n, NULL, (u_char *) "ObjectName", json_object_get_string(j));
+				node_object = lxml2_new_child(n, NULL, (u_char *) "ObjectName", (u_char *) json_object_get_string(j));
 				if (!node_object) goto error;
 				node_object->ns = NULL;
 
@@ -551,7 +555,7 @@ int xml_message_create(cwmp_str_t *msg, json_object *json_obj)
 	if (json_object_object_get(json_cwmp_obj, "download") != NULL) {
 		json_object *j = json_object_object_get(json_cwmp_obj, "download");
 
-		xpath_expr = "/soap_env:Envelope/soap_env:Body";
+		xpath_expr = (u_char *) "/soap_env:Envelope/soap_env:Body";
 		xpath_obj = lxml2_xpath_eval_expr(xpath_expr, xpath_ctx);
 		if (xpath_obj == NULL) {
 			fprintf(stderr, "could not evaluate xpath expression\n");
@@ -573,8 +577,8 @@ int xml_message_create(cwmp_str_t *msg, json_object *json_obj)
 				n->ns = NULL;
 
 				value = (u_char *) json_object_get_string(json_object_object_get(j, "file_type"));
-				if (strcmp(value, "firmware_upgrade") == 0) {
-					value = "1 Firmware Upgrade Image";
+				if (strcmp( (const char *) value, (const char *) "firmware_upgrade") == 0) {
+					value =  (u_char *) "1 Firmware Upgrade Image";
 				} else {
 					goto error;
 				}
