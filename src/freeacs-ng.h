@@ -121,16 +121,4 @@ struct connection_t
 	uintptr_t tag;
 };
 
-/* SCGI callback functions */
-static void accept_field(struct scgi_parser *, const char *, size_t);
-static void finish_field(struct scgi_parser *);
-static void accept_value(struct scgi_parser *, const char *, size_t);
-static void finish_value(struct scgi_parser *);
-static void finish_head(struct scgi_parser *);
-static size_t accept_body(struct scgi_parser *, const char *, size_t);
-static void finish_body(struct scgi_parser *);
-
-/* SCGI response */
-static void send_response(struct scgi_parser *);
-
 #endif /* _FREEACS_NG_H__ */
