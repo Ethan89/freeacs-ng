@@ -578,7 +578,11 @@ int xml_message_create(cwmp_str_t *msg, json_object *json_obj)
 
 				value = (u_char *) json_object_get_string(json_object_object_get(j, "file_type"));
 				if (strcmp( (const char *) value, (const char *) "firmware_upgrade") == 0) {
-					value =  (u_char *) "1 Firmware Upgrade Image";
+					value = (u_char *) "1 Firmware Upgrade Image";
+				} else if (strcmp((const char *) value, (const char *) "web_content") == 0) {
+					value = (u_char *) "2 Web Content";
+				} else if (strcmp((const char *) value, (const char *) "vendor_config") == 0) {
+					value = (u_char *) "3 Vendor Configuration File";
 				} else {
 					goto error;
 				}
