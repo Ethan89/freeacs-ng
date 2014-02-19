@@ -413,7 +413,7 @@ void config_load(const char *c)
 		uci_freeacs_ng = config_init_package(d, f + sizeof(char));
 		free(d);
 	}
-	
+
 	if (f == NULL) {
 		uci_freeacs_ng = config_init_package("./", c);
 	}

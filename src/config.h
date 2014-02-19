@@ -40,7 +40,7 @@ struct amqp_queue_t {
 };
 
 LIST_HEAD(authorization_head, authorization_t) auth_head;
- 
+
 struct authorization_t {
 	cwmp_str_t factory;
 	LIST_ENTRY(authorization_t) entries;
