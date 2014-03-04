@@ -92,8 +92,8 @@ static int config_init_amqp()
 	int counter_section = 0;
 	amqp.host = NULL;
 	amqp.port = 0;
-	amqp.user = NULL;
-	amqp.pass = NULL;
+	amqp.username = NULL;
+	amqp.password = NULL;
 	amqp.virtual_host = NULL;
 
 	uci_foreach_element(&uci_freeacs_ng->sections, e1) {
@@ -129,14 +129,14 @@ static int config_init_amqp()
 			amqp.port = atoi(uci_to_option(e1)->v.string);
 		}
 
-		if (!strcmp((uci_to_option(e1))->e.name, "user")) {
-			fprintf(stderr, "freeacs-ng.@amqp[0].user='%s'\n", uci_to_option(e1)->v.string);
-			amqp.user = strdup(uci_to_option(e1)->v.string);
+		if (!strcmp((uci_to_option(e1))->e.name, "username")) {
+			fprintf(stderr, "freeacs-ng.@amqp[0].username='%s'\n", uci_to_option(e1)->v.string);
+			amqp.username = strdup(uci_to_option(e1)->v.string);
 		}
 
-		if (!strcmp((uci_to_option(e1))->e.name, "pass")) {
-			fprintf(stderr, "freeacs-ng.@amqp[0].pass='%s'\n", uci_to_option(e1)->v.string);
-			amqp.pass = strdup(uci_to_option(e1)->v.string);
+		if (!strcmp((uci_to_option(e1))->e.name, "password")) {
+			fprintf(stderr, "freeacs-ng.@amqp[0].password='%s'\n", uci_to_option(e1)->v.string);
+			amqp.password = strdup(uci_to_option(e1)->v.string);
 		}
 
 		if (!strcmp((uci_to_option(e1))->e.name, "virtual_host")) {
@@ -155,13 +155,13 @@ static int config_init_amqp()
 		goto error;
 	}
 
-	if (!amqp.user) {
-		fprintf(stderr, "uci option user must be defined in amqp section...\n");
+	if (!amqp.username) {
+		fprintf(stderr, "uci option username must be defined in amqp section...\n");
 		goto error;
 	}
 
-	if (!amqp.pass) {
-		fprintf(stderr, "uci option pass must be defined in amqp section...\n");
+	if (!amqp.password) {
+		fprintf(stderr, "uci option password must be defined in amqp section...\n");
 		goto error;
 	}
 
@@ -174,8 +174,8 @@ static int config_init_amqp()
 
 error:
 	free(amqp.host);
-	free(amqp.user);
-	free(amqp.pass);
+	free(amqp.username);
+	free(amqp.password);
 	free(amqp.virtual_host);
 	return -1;
 }
@@ -387,8 +387,8 @@ void config_exit(void)
 	uci_free_context(uci_ctx);
 
 	free(amqp.host);
-	free(amqp.user);
-	free(amqp.pass);
+	free(amqp.username);
+	free(amqp.password);
 	free(amqp.virtual_host);
 	free(amqp_exchange.broadcast.data);
 	free(amqp_exchange.provisioning.data);

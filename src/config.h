@@ -25,8 +25,8 @@ struct scgi_t {
 struct amqp_t {
 	char *host;
 	int port;
-	char *user;
-	char *pass;
+	char *username;
+	char *password;
 	char *virtual_host;
 };
 

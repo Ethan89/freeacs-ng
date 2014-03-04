@@ -9,8 +9,8 @@ config scgi
 config amqp
 	option host '127.0.0.1'
 	option port '5672'
-	option user 'guest'
-	option pass 'guest'
+	option username 'guest'
+	option password 'guest'
 	option virtual_host '/'
 
 config amqp_exchange

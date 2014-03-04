@@ -46,7 +46,7 @@ int amqp_notify(const cwmp_str_t *msg)
 		return -1;
 	}
 
-	reply = amqp_login(conn, amqp.virtual_host, 0, 131072, 0, AMQP_SASL_METHOD_PLAIN, amqp.user, amqp.pass);
+	reply = amqp_login(conn, amqp.virtual_host, 0, 131072, 0, AMQP_SASL_METHOD_PLAIN, amqp.username, amqp.password);
 	if (reply.reply_type != AMQP_RESPONSE_NORMAL) {
 		amqp_connection_close(conn, AMQP_INTERNAL_ERROR);
 		amqp_destroy_connection(conn);
@@ -121,7 +121,7 @@ int amqp_fetch_pending(cwmp_str_t *queue, cwmp_str_t *msg)
 		return -1;
 	}
 
-	reply = amqp_login(conn, amqp.virtual_host, 0, 131072, 0, AMQP_SASL_METHOD_PLAIN, amqp.user, amqp.pass);
+	reply = amqp_login(conn, amqp.virtual_host, 0, 131072, 0, AMQP_SASL_METHOD_PLAIN, amqp.username, amqp.password);
 	if (reply.reply_type != AMQP_RESPONSE_NORMAL) {
 		amqp_connection_close(conn, AMQP_INTERNAL_ERROR);
 		amqp_destroy_connection(conn);
